@@ -1,0 +1,6 @@
+# Local hosting metadata and generated deployment packages
+.openai/
+site-deploy.tar.gz
+*.log
+.DS_Store
+Thumbs.db
