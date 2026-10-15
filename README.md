@@ -9,7 +9,7 @@ From this folder, run `python -m http.server 4173 --directory dist`, then open h
 ## Contents
 
 - `dist/index.html`: product page and accessible FAQ.
-- `dist/privacy.html`: PriorityDesk privacy policy, linked from the website footer, with Taynium as the developer and prioritydesk@outlook.com as the contact email. Last updated 11 October 2026.
+- `dist/privacy.html`: PriorityDesk privacy policy, linked from the website footer, with Taynium as the developer and prioritydesk.app@outlook.com as the contact email. Covers the Windows and Android apps. Last updated 15 October 2026.
 - `dist/privacy.css`: privacy page typography and layout.
 - `dist/styles.css`: responsive layout, colours, and typography.
 - `dist/script.js`: example task preview with filtering, completion, task selection, adding, and resetting. Sample tasks only exist in page memory.

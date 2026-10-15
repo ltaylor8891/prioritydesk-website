@@ -63,7 +63,7 @@ If the old page still appears, check the DNS records and try again after propaga
 
 Edit the files in `dist`, commit them to `main`, and push. The **Publish website** GitHub Actions workflow automatically publishes the updated site. DNS only needs setting up once.
 
-The privacy policy identifies the developer as Taynium and lists prioritydesk@outlook.com as the contact email.
+The privacy policy identifies the developer as Taynium and lists prioritydesk.app@outlook.com as the contact email.
 
 ## Official instructions
 
