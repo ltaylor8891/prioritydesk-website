@@ -12,10 +12,12 @@ From this folder, run `python -m http.server 4173 --directory dist`, then open h
 - `dist/privacy.html`: PriorityDesk privacy policy, linked from the website footer, with Taynium as the developer and prioritydesk.app@outlook.com as the contact email. Covers the Windows and Android apps. Last updated 15 October 2026.
 - `dist/privacy.css`: privacy page typography and layout.
 - `dist/styles.css`: responsive layout, colours, and typography.
+- `dist/launch.css`: store availability, Windows screenshot gallery and Android preview layouts.
+- `dist/images/`: unmodified copies of the supplied Windows Store and Google Play screenshots.
 - `dist/script.js`: example task preview with filtering, completion, task selection, adding, and resetting. Sample tasks only exist in page memory.
 - `dist/mark.svg`: website favicon based on the current app's square check-mark branding.
 
-The website describes features documented in the app README. OneDrive sync is labelled preview, Android is described as early development, and there is no public download or invented signup service. Add an approved release link when one is available. Google Fonts supplies DM Sans and Manrope; system fonts are the fallback.
+The website reflects the Windows Microsoft Store launch and the Android companion's progress through Google Play testing. Android is marked coming soon, without a promised release date or public download link. Copy and screenshots come from the app project's Store listing assets. The interactive task demo is an illustrative example, separate from the real app screenshots. Google Fonts supplies DM Sans and Manrope; system fonts are the fallback.
 
 ## Publishing
 
