@@ -71,9 +71,9 @@ document.querySelector('#reset-demo').addEventListener('click',() => {tasks = in
 render();
 
 const screenshots = {
-  tasks: {src:'images/windows-tasks.png',alt:'PriorityDesk on Windows showing tasks grouped by project, coloured priorities, and a detail pane with child tasks.',caption:'Projects, priorities and the details of your next step, all in one view.'},
-  summary: {src:'images/windows-summary.png',alt:'PriorityDesk on Windows with a task summary tooltip showing notes, project, priority, status and due date.',caption:'Hover over a task for its notes, priority, due date and progress at a glance.'},
-  editor: {src:'images/windows-editor.png',alt:'PriorityDesk Windows task editor with notes, attachments, project and priority settings.',caption:'Keep notes and files with the task they belong to. Edit the details in one place.'}
+  tasks: {src:'images/windows-tasks.png',alt:'Priority Desk on Windows showing tasks grouped by project, coloured priorities, and a detail pane with child tasks.',caption:'Projects, priorities and the details of your next step, all in one view.'},
+  summary: {src:'images/windows-summary.png',alt:'Priority Desk on Windows with a task summary tooltip showing notes, project, priority, status and due date.',caption:'Hover over a task for its notes, priority, due date and progress at a glance.'},
+  editor: {src:'images/windows-editor.png',alt:'Priority Desk Windows task editor with notes, attachments, project and priority settings.',caption:'Keep notes and files with the task they belong to. Edit the details in one place.'}
 };
 for (const button of document.querySelectorAll('[data-screenshot]')) {
   button.addEventListener('click', () => {
