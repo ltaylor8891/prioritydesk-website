@@ -28,3 +28,14 @@ Website: https://ltaylor8891.github.io/prioritydesk-website/
 GitHub Pages publishes `dist` through `.github/workflows/pages.yml` whenever website changes are pushed to `main`. Only website files are published. Local `.openai` metadata is excluded from Git.
 
 See [DOMAIN-SETUP.md](DOMAIN-SETUP.md) for the exact IONOS DNS records and steps for connecting `prioritydesk.co.uk` and enabling HTTPS.
+
+## LockTied support pages
+
+The LockTied Android app is also developed by Taynium. Its standalone support pages are hosted under the existing custom domain:
+
+- https://prioritydesk.co.uk/locktied/ — support landing page.
+- https://prioritydesk.co.uk/locktied/privacy.html — privacy policy.
+- https://prioritydesk.co.uk/locktied/rules.html — sharing rules and reporting contact.
+- https://prioritydesk.co.uk/locktied/delete.html — data deletion request instructions.
+
+These pages are static HTML in `dist/locktied/`, deployed by the same Pages workflow. They do not collect form submissions or load tracking scripts. Support/deletion requests use the public support email and require manual handling.
