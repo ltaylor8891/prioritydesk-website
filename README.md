@@ -39,3 +39,9 @@ The LockTied Android app is also developed by Taynium. Its standalone support pa
 - https://prioritydesk.co.uk/locktied/delete.html — data deletion request instructions.
 
 These pages are static HTML in `dist/locktied/`, deployed by the same Pages workflow. They do not collect form submissions or load tracking scripts. Support/deletion requests use the public support email and require manual handling.
+
+## LockTied product website (20 October 2026)
+
+`dist/locktied/index.html` is the full LockTied product landing page, with local styles, a progressively enhanced screenshot switcher, setup steps, native FAQ disclosures, and an eligibility-labelled Google Play link. The four images are unmodified sample-artwork screenshots from the LockTied project; the logo is its existing brand SVG. No external fonts, analytics, cookies, forms, or dependencies are added.
+
+Preview at http://localhost:4173/locktied/ using the command above. The existing privacy, rules and deletion pages are retained as published; updating the held policy drafts is a separate task. The landing page reflects the deployed monthly limits (300 images and 20 four-minute live sessions per pair) and labels Play availability as testing.
