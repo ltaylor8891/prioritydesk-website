@@ -16,8 +16,8 @@ export function raySprite(origin,dir,e,size=ENEMY_SIZE,base=0) {
 }
 export const cover = [
   {x:-7,z:-6,w:4,d:2,h:2.8},{x:6,z:-7,w:3,d:4,h:3.8},
-  {x:-8,z:3,w:3,d:3,h:2.5},{x:7,z:4,w:4,d:2,h:2.6},
-  {x:0,z:0,w:2.4,d:2.4,h:4.8},{x:-1,z:-11,w:3,d:1.2,h:1.5},
+  {x:-8,z:3,w:3,d:3,h:1.3},{x:7,z:4,w:4,d:2,h:2.6},
+  {x:0,z:0,w:2.4,d:2.4,h:4.8},{x:-1,z:-11,w:3,d:1.2,h:1.15},
   {x:-4,z:9,w:2,d:2,h:1.5},{x:10,z:-1,w:1.5,d:2,h:1.4}
 ];
 export const walls = [{x:0,z:-16,w:33,d:1,h:5},{x:0,z:16,w:33,d:1,h:5},{x:-16,z:0,w:1,d:32,h:5},{x:16,z:0,w:1,d:32,h:5}];

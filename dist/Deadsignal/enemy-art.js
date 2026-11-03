@@ -7,7 +7,7 @@ const palettes=[
   {cloth:'#928062',shade:'#72644e',skin:'#ddc9a4',accent:'#cbb584',boots:'#51453b'},
   {cloth:'#526f7e',shade:'#3b5361',skin:'#eee0c4',accent:'#a6bfc0',boots:'#404b50'}
 ];
-export function drawEnemy(ctx,frame=0,variant=0){
+export function drawEnemy(ctx,frame=0,variant=0,firing=false){
   const c=palettes[variant%palettes.length],ink='#141713',step=Math.sin(frame*Math.PI/2),bob=Math.abs(step)*2;
   ctx.save();ctx.lineJoin='round';ctx.lineCap='round';ctx.lineWidth=9;ctx.strokeStyle=ink;
   const shape=(d,fill,stroke=ink,width=9)=>{const p=new Path2D(d);ctx.fillStyle=fill;if(fill)ctx.fill(p);if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke(p);}};
@@ -26,10 +26,10 @@ export function drawEnemy(ctx,frame=0,variant=0){
   // Rounded sleeves and mitten hands, with a small opposing arm swing.
   ctx.save();ctx.translate(0,-step*6);
   shape('M 78 192 Q 45 188 34 219 L 24 261 Q 34 278 57 267 L 82 227 Z',c.cloth);
-  oval(36,276,19,22,c.skin);line('M 28 268 Q 37 266 40 274',4);ctx.restore();
+  ctx.restore();
   ctx.save();ctx.translate(0,step*6);
   shape('M 178 192 Q 212 189 223 220 L 233 261 Q 219 278 199 267 L 175 228 Z',c.cloth);
-  oval(220,276,19,22,c.skin);line('M 228 268 Q 219 266 216 274',4);ctx.restore();
+  ctx.restore();
   // A simple tunic, collar, belt and two oversized pockets.
   shape('M 83 180 Q 126 168 173 180 Q 187 211 185 256 L 188 308 Q 164 318 129 306 Q 95 320 68 309 L 71 250 Q 69 210 83 180 Z',c.cloth);
   shape('M 104 183 L 128 220 L 152 183 Z',c.accent,ink,6);
@@ -74,5 +74,23 @@ export function drawEnemy(ctx,frame=0,variant=0){
     shape('M 168 233 L 184 233 L 184 266 L 168 266 Z','#343f3d',ink,4);
     line('M 179 232 L 182 218',4);line('M 173 242 L 180 242 M 173 249 L 180 249',3,c.accent);
   }
+  // A shared illustrated weapon silhouette held across the chest.
+  ctx.save();ctx.translate(firing?-4:0,firing?2:0);
+  shape('M 31 245 Q 50 229 76 247 L 102 264 Q 95 283 78 279 L 44 269 Z',c.cloth,ink,8);
+  shape('M 220 246 Q 198 231 182 247 L 155 265 Q 162 282 181 278 L 211 268 Z',c.cloth,ink,8);
+  if(variant===2){
+    shape('M 102 234 L 165 234 L 165 252 L 132 254 L 125 279 L 108 276 L 112 252 L 102 252 Z','#667363',ink,6);
+    shape('M 110 252 L 128 253 L 124 276 L 108 274 Z','#99724b',ink,4);
+  }else{
+    shape('M 49 246 L 90 242 L 101 259 L 62 270 L 49 268 Z','#99724b',ink,6);
+    shape('M 91 236 L 173 236 L 176 255 L 146 257 L 142 280 L 125 280 L 123 258 L 93 261 Z','#667363',ink,6);
+    shape('M 165 237 L 220 237 L 220 248 L 165 248 Z','#39483f',ink,5);
+    shape('M 161 247 L 199 247 L 197 258 L 163 258 Z','#99724b',ink,5);
+    if(variant===1){line('M 172 232 L 221 232',6);for(let x=167;x<196;x+=7)line(`M ${x} 249 L ${x} 256`,3);}
+    else line('M 113 234 L 113 226 L 138 226 L 138 234',5);
+  }
+  oval(106,266,14,13,c.skin,ink,6);oval(173,261,15,12,c.skin,ink,6);
+  if(firing){const mx=variant===2?170:222;shape(`M ${mx} 242 L ${mx+8} 224 L ${mx+10} 237 L 248 233 L 240 244 L 248 256 L ${mx+9} 249 L ${mx+6} 260 Z`,'#ffcd63',ink,4);}
+  ctx.restore();
   ctx.restore();ctx.restore();
 }

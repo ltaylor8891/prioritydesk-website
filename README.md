@@ -56,9 +56,16 @@ To update it, run `npm.cmd run build -- --base=/GFC/` in the Geometry source pro
 
 The standalone 3D FPS is hosted at https://prioritydesk.co.uk/Deadsignal/ (case-sensitive). GitHub Pages redirects `/Deadsignal` to the directory URL. The dependency-free static game files live in `dist/Deadsignal/`; all asset and module URLs resolve relative to that directory.
 
-Source: https://github.com/ltaylor8891/dead-signal. To update, run `npm test` in the game repository and copy its `dist` contents into this directory, then commit and push to `main`. The game uses real mouse capture; play in a standalone desktop browser and click **Enter the outpost**, with Escape releasing the pointer.
+Source: https://github.com/ltaylor8891/dead-signal. To update, run `npm test` in the game repository and copy its `dist` contents into this directory, then commit and push to `main`. The game uses real mouse capture; play in a standalone desktop browser and click **Start the drill**, with Escape releasing the pointer.
 
 Dead Signal now uses original, smooth cartoon character cutouts: thick black outlines, oversized expressive heads, and olive, khaki, and blue clothing. View the animated lineup at https://prioritydesk.co.uk/Deadsignal/characters.html. The character drawing module is bundled locally; no external images or fonts are needed.
+
+
+### Camp Paper training-ground update
+
+Dead Signal now includes an outlined 3D training ground with four reactive target lanes, sandbag cover, a control tower, supply yard, range office, perimeter fencing, distant barracks and hills. The player has three illustrated weapons (1: carbine, 2: shotgun, 3: sidearm), independent magazines and reload animations. Enemies carry matching guns, visibly prepare their attacks, then fire projectiles that can be dodged or stopped by cover. Contact alone no longer causes damage.
+
+The main menu offers a non-combat training-ground preview with three viewpoints and all three weapon illustrations. The gameplay and geometry tests remain in the standalone dead-signal source repository; deploy by copying its complete `dist` directory here.
 
 ## Motor Calculator
 
