@@ -45,3 +45,9 @@ These pages are static HTML in `dist/locktied/`, deployed by the same Pages work
 `dist/locktied/index.html` is the full LockTied product landing page, with local styles, a progressively enhanced screenshot switcher, setup steps, native FAQ disclosures, and an eligibility-labelled Google Play link. The four images are unmodified sample-artwork screenshots from the LockTied project; the logo is its existing brand SVG. No external fonts, analytics, cookies, forms, or dependencies are added.
 
 Preview at http://localhost:4173/locktied/ using the command above. The existing privacy, rules and deletion pages are retained as published; updating the held policy drafts is a separate task. The landing page reflects the deployed monthly limits (300 images and 20 four-minute live sessions per pair) and labels Play availability as testing.
+
+## Graphical force calculator
+
+Mechanism Lab is hosted at https://prioritydesk.co.uk/GFC/ (`/GFC` redirects to the directory URL). Its production bundle lives in `dist/GFC/`, including the calculation worker and locally bundled fonts. Projects and calculations stay in the visitor's browser; saved projects are not uploaded to the website.
+
+To update it, run `npm.cmd run build -- --base=/GFC/` in the Geometry source project, then copy that project's `dist` contents into `dist/GFC/` here. Keep other website folders intact. Run the source project's `npm.cmd test` before publishing and verify the worker and assets load from `/GFC/assets/`. Commit the updated bundle and push to `main` to deploy through the existing Pages workflow.
