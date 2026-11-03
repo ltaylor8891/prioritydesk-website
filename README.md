@@ -51,3 +51,9 @@ Preview at http://localhost:4173/locktied/ using the command above. The existing
 Mechanism Lab is hosted at https://prioritydesk.co.uk/GFC/ (`/GFC` redirects to the directory URL). Its production bundle lives in `dist/GFC/`, including the calculation worker and locally bundled fonts. Projects and calculations stay in the visitor's browser; saved projects are not uploaded to the website.
 
 To update it, run `npm.cmd run build -- --base=/GFC/` in the Geometry source project, then copy that project's `dist` contents into `dist/GFC/` here. Keep other website folders intact. Run the source project's `npm.cmd test` before publishing and verify the worker and assets load from `/GFC/assets/`. Commit the updated bundle and push to `main` to deploy through the existing Pages workflow.
+
+## Dead Signal
+
+The standalone 3D FPS is hosted at https://prioritydesk.co.uk/Deadsignal/ (case-sensitive). GitHub Pages redirects `/Deadsignal` to the directory URL. The six dependency-free static game files live in `dist/Deadsignal/`; all asset and module URLs resolve relative to that directory.
+
+Source: https://github.com/ltaylor8891/dead-signal. To update, run `npm test` in the game repository and copy its `dist` contents into this directory, then commit and push to `main`. The game uses real mouse capture; play in a standalone desktop browser and click **Enter the outpost**, with Escape releasing the pointer.
