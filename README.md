@@ -74,3 +74,5 @@ The Taynium Motor / Conveyor Calculator (v1.3.0) is hosted at https://priorityde
 Source: https://github.com/ltaylor8891/motor-calculator (`motor-calculator-app/`). To update, copy `index.html` and `taynium-logo.svg` from that folder into `dist/motorcalc/`, then commit and push to `main`.
 
 Dead Signal team build: /Deadsignal now defaults to 4 vs 4 bot team deathmatch, with shared weapons, perception-based AI, respawns, team colours, scoring and a spectator preview. Online network joining is not enabled yet.
+
+Dead Signal field build 004 adds distance-driven walking, matching body/aim rotation, distinct rear character artwork and a directional tactical minimap.

@@ -1,6 +1,7 @@
-import {blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=teams-1';
-import {WEAPONS,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=teams-1';
-import {raySphere} from './combat.js?v=teams-1';
+import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=motion-1';
+import {blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=motion-1';
+import {WEAPONS,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=motion-1';
+import {raySphere} from './combat.js?v=motion-1';
 
 export const MATCH_RULES={teamSize:4,scoreLimit:30,timeLimit:300,respawn:3,protection:1.5};
 export const TEAM_NAMES=['BLUE','ORANGE'];
@@ -21,7 +22,7 @@ export function createMatch({spectator=false,random=Math.random}={}){
       hp:100,kills:0,deaths:0,respawn:0,protection:MATCH_RULES.protection,arsenal,
       targetId:null,memory:null,reaction:0,think:0,route:id,goal:null,path:null,pathTimer:0,
       burst:0,rest:0,strafe:slot%2?1:-1,state:'PATROL',lastAttacker:null,flankGoal:null};
-    match.actors.push(a);
+    if(!a.human)a.yaw=a.heading+Math.PI;Object.assign(a,{moving:false,walkPhase:0});match.actors.push(a);
   }
   return match;
 }
@@ -60,7 +61,7 @@ function respawnActor(match,a){
   Object.assign(a,p,{hp:100,protection:MATCH_RULES.protection,respawn:0,yaw:p.z>0?0:Math.PI,pitch:0,
     heading:p.z>0?0:Math.PI,arsenal:createArsenal(),targetId:null,memory:null,goal:null,path:null,
     reaction:0,burst:0,rest:.5,think:0,aim:0,fire:0,flash:0,state:'PATROL',flankGoal:null});
-  a.arsenal.selected=selected;match.events.push({type:'respawn',actor:a.id});
+  a.arsenal.selected=selected;if(!a.human)a.yaw=a.heading+Math.PI;a.moving=false;a.walkPhase=0;match.events.push({type:'respawn',actor:a.id});
 }
 export function canSee(observer,target){
   if(target.hp<=0||observer.team===target.team)return false;
@@ -79,6 +80,9 @@ export function hearShot(match,shooter){
   }
 }
 export function fireMatchWeapon(match,shooter,yaw,pitch=0,extraSpread=0){
+  const facing=shooter.human?shooter.yaw:shooter.heading;
+  if(!Number.isFinite(facing)||Math.abs(angleDifference(yaw,facing))>.10)return false;
+  if(!shooter.human&&Math.abs(angleDifference(shooter.yaw,shooter.heading+Math.PI))>.001)return false;
   if(match.ended||shooter.hp<=0||!fireWeapon(shooter.arsenal))return false;
   shooter.protection=0;shooter.fire=.12;hearShot(match,shooter);
   const w=WEAPONS[shooter.arsenal.selected],origin={x:shooter.x,y:shooter.human?shooter.y:1.35,z:shooter.z};
@@ -125,7 +129,7 @@ function travel(match,a,goal,dt,speed=3.0){
   dx/=n;dz/=n;
   for(const o of match.actors){if(o===a||o.hp<=0)continue;const d=distance(a,o);if(d>.01&&d<.9){dx+=(a.x-o.x)/d;dz+=(a.z-o.z)/d;}}
   n=Math.hypot(dx,dz)||1;move(a,dx/n*speed*dt,dz/n*speed*dt,.38);
-  if(a.targetId===null)a.heading+=Math.max(-dt*2.2,Math.min(dt*2.2,angleDiff(Math.atan2(dx,-dz),a.heading)));
+  if(a.targetId===null)turnActor(a,Math.atan2(dx,-dz),dt,2.2);
 }
 function botTick(match,a,dt){
   stepWeapon(a.arsenal,dt);a.rest=Math.max(0,a.rest-dt);a.think-=dt;
@@ -153,7 +157,7 @@ function botTick(match,a,dt){
   }
   if(sight){
     a.state='ENGAGE';a.flankGoal=null;a.reaction=Math.max(0,a.reaction-dt);a.aim=a.reaction;
-    const desired=bearing(a,target);a.heading+=Math.max(-dt*3,Math.min(dt*3,angleDiff(desired,a.heading)));
+    const desired=bearing(a,target);turnActor(a,desired,dt);
     const d=distance(a,target),w=WEAPONS[a.arsenal.selected],preferred=a.variant===1?7:12;
     if(d>Math.min(w.range*.75,preferred+3)){travel(match,a,target,dt);}
     else{
@@ -161,7 +165,7 @@ function botTick(match,a,dt){
       if(match.random()<dt*.6)a.strafe*=-1;
       move(a,Math.cos(desired)*a.strafe*dt*1.3,Math.sin(desired)*a.strafe*dt*1.3,.38);
     }
-    if(a.reaction===0&&a.rest===0&&Math.abs(angleDiff(desired,a.heading))<.16&&d<w.range){
+    if(a.reaction===0&&a.rest===0&&facingTarget(a,target)&&d<w.range){
       if(a.burst===0)a.burst=2+Math.floor(match.random()*3);
       // Aim at the observed body, with finite error that grows while moving or hurt.
       if(fireMatchWeapon(match,a,a.heading,0,.025+(a.hp<40?.025:.01))){
@@ -173,7 +177,7 @@ function botTick(match,a,dt){
     if(a.memory){
       if(a.flankGoal&&distance(a,a.flankGoal)<1.2)a.flankGoal=null;
       if(a.flankGoal){a.state='FLANK';travel(match,a,a.flankGoal,dt,3.4);}
-      else if(distance(a,a.memory)<1.2){a.heading+=dt*1.5;}else travel(match,a,a.memory,dt);
+      else if(distance(a,a.memory)<1.2){turnActor(a,a.heading+dt*1.5,dt);}else travel(match,a,a.memory,dt);
     }else{
       const [x,z]=routes[a.route%routes.length],goal={x,z};
       if(distance(a,goal)<1.2){a.route=(a.route+(a.team?3:1))%routes.length;a.goal=null;}
@@ -188,7 +192,7 @@ export function tickMatch(match,dt){
   for(const a of match.actors){
     a.flash=Math.max(0,a.flash-dt);a.fire=Math.max(0,a.fire-dt);a.protection=Math.max(0,a.protection-dt);
     if(a.hp<=0){a.respawn=Math.max(0,a.respawn-dt);if(a.respawn===0)respawnActor(match,a);continue;}
-    if(!a.human)botTick(match,a,dt);
+    if(!a.human){const previous={x:a.x,z:a.z};botTick(match,a,dt);updateWalk(a,previous,dt);}
     if(match.ended)break;
   }
   match.feed=match.feed.filter(e=>match.elapsed-e.time<7);

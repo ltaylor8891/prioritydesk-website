@@ -7,18 +7,18 @@ const palettes=[
   {cloth:'#928062',shade:'#72644e',skin:'#ddc9a4',accent:'#cbb584',boots:'#51453b'},
   {cloth:'#526f7e',shade:'#3b5361',skin:'#eee0c4',accent:'#a6bfc0',boots:'#404b50'}
 ];
-export function drawEnemy(ctx,frame=0,variant=0,firing=false,team=null){
-  const c={...palettes[variant%palettes.length],...(team===0?{cloth:'#5285a3',shade:'#375b75',accent:'#9dd4ec'}:team===1?{cloth:'#c1844e',shade:'#8c5639',accent:'#ffd39a'}:{})},ink='#141713',step=Math.sin(frame*Math.PI/2),bob=Math.abs(step)*2;
+export function drawEnemy(ctx,frame=0,variant=0,firing=false,team=null,back=false){
+  const c={...palettes[variant%palettes.length],...(team===0?{cloth:'#5285a3',shade:'#375b75',accent:'#9dd4ec'}:team===1?{cloth:'#c1844e',shade:'#8c5639',accent:'#ffd39a'}:{})},ink='#141713',step=Math.sin(frame*Math.PI/4),bob=Math.abs(step)*5;
   ctx.save();ctx.lineJoin='round';ctx.lineCap='round';ctx.lineWidth=9;ctx.strokeStyle=ink;
   const shape=(d,fill,stroke=ink,width=9)=>{const p=new Path2D(d);ctx.fillStyle=fill;if(fill)ctx.fill(p);if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke(p);}};
   const oval=(x,y,rx,ry,fill,stroke=ink,width=9)=>{ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}};
   const line=(d,width=7,color=ink)=>shape(d,null,color,width);
   // Soft trousers and chunky boots alternate their stride without changing the silhouette's scale.
-  ctx.save();ctx.translate(0,step*5);
+  ctx.save();ctx.translate(-step*7,-Math.max(0,step)*17);ctx.translate(100,286);ctx.rotate(step*.13);ctx.translate(-100,-286);
   shape('M 77 280 L 121 284 L 118 348 Q 101 362 74 346 Z',c.shade);
   shape('M 76 336 Q 97 341 118 337 L 120 366 Q 99 375 66 369 Q 58 356 76 349 Z',c.boots);
   line('M 75 361 L 105 363',4,'#a49b83');ctx.restore();
-  ctx.save();ctx.translate(0,-step*5);
+  ctx.save();ctx.translate(step*7,-Math.max(0,-step)*17);ctx.translate(157,286);ctx.rotate(-step*.13);ctx.translate(-157,-286);
   shape('M 137 284 L 179 280 L 184 346 Q 158 361 138 348 Z',c.shade);
   shape('M 138 337 Q 162 341 182 336 L 184 349 Q 201 355 193 369 Q 162 375 137 366 Z',c.boots);
   line('M 150 363 L 180 361',4,'#a49b83');ctx.restore();
@@ -39,6 +39,18 @@ export function drawEnemy(ctx,frame=0,variant=0,firing=false,team=null){
   shape('M 70 277 Q 126 288 186 277 L 187 295 Q 127 306 69 295 Z','#4c4438',ink,6);
   shape('M 116 283 L 141 283 L 141 300 L 116 300 Z',c.accent,ink,5);
   line('M 126 291 L 134 291',4);
+  if(back){
+    // Rear art makes facing away unmistakable while retaining the flat cutout.
+    shape('M 85 200 Q 127 183 173 202 L 178 270 Q 130 292 79 270 Z',c.shade,ink,7);
+    shape('M 95 208 L 162 208 L 164 250 Q 130 265 93 250 Z',c.cloth,ink,5);
+    line('M 103 205 L 103 265 M 154 205 L 154 265',5,c.accent);
+    shape('M 42 113 C 38 66 76 33 127 34 C 182 32 218 64 215 115 C 222 166 182 202 129 203 C 77 205 37 168 42 113 Z',c.skin,ink,10);
+    shape('M 44 96 Q 52 34 126 33 Q 205 29 215 98 L 205 156 Q 172 186 160 167 L 145 182 L 126 169 L 105 183 Q 76 171 49 157 Z','#544b37',ink,7);
+    shape('M 39 102 Q 34 20 125 18 Q 217 18 219 102 L 207 134 Q 126 160 48 132 Z',c.cloth,ink,10);
+    line('M 55 116 Q 127 138 202 117',7,c.shade);
+    if(variant===2){line('M 42 110 Q 35 13 213 110',12);oval(43,129,21,29,'#56605c',ink,8);oval(213,129,21,29,'#56605c',ink,8);}
+    ctx.restore();ctx.restore();return;
+  }
   // The head is deliberately oversized, with an imperfect round contour.
   shape('M 42 113 C 38 66 76 33 127 34 C 182 32 218 64 215 115 C 222 166 182 202 129 203 C 77 205 37 168 42 113 Z',c.skin,ink,10);
   if(variant===0){
@@ -74,23 +86,17 @@ export function drawEnemy(ctx,frame=0,variant=0,firing=false,team=null){
     shape('M 168 233 L 184 233 L 184 266 L 168 266 Z','#343f3d',ink,4);
     line('M 179 232 L 182 218',4);line('M 173 242 L 180 242 M 173 249 L 180 249',3,c.accent);
   }
-  // A shared illustrated weapon silhouette held across the chest.
+  // Foreshortened barrel points along the character's forward normal.
   ctx.save();ctx.translate(firing?-4:0,firing?2:0);
   shape('M 31 245 Q 50 229 76 247 L 102 264 Q 95 283 78 279 L 44 269 Z',c.cloth,ink,8);
   shape('M 220 246 Q 198 231 182 247 L 155 265 Q 162 282 181 278 L 211 268 Z',c.cloth,ink,8);
-  if(variant===2){
-    shape('M 102 234 L 165 234 L 165 252 L 132 254 L 125 279 L 108 276 L 112 252 L 102 252 Z','#667363',ink,6);
-    shape('M 110 252 L 128 253 L 124 276 L 108 274 Z','#99724b',ink,4);
-  }else{
-    shape('M 49 246 L 90 242 L 101 259 L 62 270 L 49 268 Z','#99724b',ink,6);
-    shape('M 91 236 L 173 236 L 176 255 L 146 257 L 142 280 L 125 280 L 123 258 L 93 261 Z','#667363',ink,6);
-    shape('M 165 237 L 220 237 L 220 248 L 165 248 Z','#39483f',ink,5);
-    shape('M 161 247 L 199 247 L 197 258 L 163 258 Z','#99724b',ink,5);
-    if(variant===1){line('M 172 232 L 221 232',6);for(let x=167;x<196;x+=7)line(`M ${x} 249 L ${x} 256`,3);}
-    else line('M 113 234 L 113 226 L 138 226 L 138 234',5);
-  }
+  shape('M 114 249 L 150 249 L 155 285 L 109 285 Z','#99724b',ink,6);
   oval(106,266,14,13,c.skin,ink,6);oval(173,261,15,12,c.skin,ink,6);
-  if(firing){const mx=variant===2?170:222;shape(`M ${mx} 242 L ${mx+8} 224 L ${mx+10} 237 L 248 233 L 240 244 L 248 256 L ${mx+9} 249 L ${mx+6} 260 Z`,'#ffcd63',ink,4);}
+  shape('M 106 260 L 115 223 L 147 223 L 158 260 L 145 283 L 117 282 Z','#667363',ink,7);
+  oval(131,236,variant===1?20:15,variant===1?16:12,'#39483f',ink,6);
+  oval(131,236,variant===1?11:7,variant===1?9:6,'#141713',null);
+  line('M 130 219 L 130 209',5,c.accent);
+  if(firing){shape('M 130 208 L 140 218 L 166 211 L 157 235 L 168 251 L 144 253 L 130 274 L 119 253 L 94 249 L 105 231 L 94 214 L 120 219 Z','#ffcd63',ink,4);oval(130,237,11,12,'#fff0b1',null);}
   ctx.restore();
   ctx.restore();ctx.restore();
 }

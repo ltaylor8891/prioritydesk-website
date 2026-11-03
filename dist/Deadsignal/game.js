@@ -1,11 +1,13 @@
-import {clamp,cover,walls,blocked,move,wallDistance,visible,flowField,nextStep,ENEMY_SIZE,spriteCorners,raySprite} from './core.js?v=teams-1';
-import {drawEnemy,CHARACTER_WIDTH,CHARACTER_HEIGHT} from './enemy-art.js?v=teams-1';
-import {WEAPONS,createArsenal,selectWeapon,startReload,stepWeapon,fireWeapon,drawPlayerWeapon} from './weapons.js?v=teams-1';
-import {readyEnemyShot,stepProjectile,ENEMY_GUNS,enemyVolley} from './combat.js?v=teams-1';
-import {buildTrainingGround,drawDecal,drawTarget,TRAINING_TARGETS} from './training-ground.js?v=teams-1';
+import {WALK_FRAMES,walkFrame,updateWalk,turnActor,headingTo,showsBack} from './actor-motion.js?v=motion-1';
+import {drawMinimap} from './minimap.js?v=motion-1';
+import {clamp,cover,walls,blocked,move,wallDistance,visible,flowField,nextStep,ENEMY_SIZE,spriteCorners,raySprite} from './core.js?v=motion-1';
+import {drawEnemy,CHARACTER_WIDTH,CHARACTER_HEIGHT} from './enemy-art.js?v=motion-1';
+import {WEAPONS,createArsenal,selectWeapon,startReload,stepWeapon,fireWeapon,drawPlayerWeapon} from './weapons.js?v=motion-1';
+import {readyEnemyShot,stepProjectile,ENEMY_GUNS,enemyVolley} from './combat.js?v=motion-1';
+import {buildTrainingGround,drawDecal,drawTarget,TRAINING_TARGETS} from './training-ground.js?v=motion-1';
 import {mouseDelta} from './mouse-look.js';
 import {createPointerLock} from './pointer-lock.js';
-import {createMatch,tickMatch,fireMatchWeapon,MATCH_RULES,TEAM_NAMES,TEAM_COLORS} from './team-match.js?v=teams-1';
+import {createMatch,tickMatch,fireMatchWeapon,MATCH_RULES,TEAM_NAMES,TEAM_COLORS} from './team-match.js?v=motion-1';
 const $=id=>document.getElementById(id),canvas=$('world'),gl=canvas.getContext('webgl',{antialias:true,alpha:false});
 if(!gl){$('unsupported').hidden=false;throw new Error('WebGL unavailable');}
 const vertex=`attribute vec3 aPos;attribute vec3 aColor;attribute vec2 aUV;uniform mat4 uVP;varying vec3 vColor;varying vec2 vUV;varying float vDepth;void main(){gl_Position=uVP*vec4(aPos,1.0);vColor=aColor;vUV=aUV;vDepth=gl_Position.w;}`;
@@ -22,10 +24,11 @@ const worldBuffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,worldBuffer);g
 const lineBuffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,lineBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(trainingGround.lines),gl.STATIC_DRAW);
 const spriteBuffer=gl.createBuffer();
 function texture(draw,width=32,height=48,smooth=false){const c=document.createElement('canvas');c.width=width;c.height=height;const ctx=c.getContext('2d');draw(ctx);const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,c);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,smooth?gl.LINEAR:gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,smooth?gl.LINEAR:gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return tex;}
-const enemyTextures=[0,1,2].map(variant=>[0,1,2,3].map(frame=>texture(c=>drawEnemy(c,frame,variant),CHARACTER_WIDTH,CHARACTER_HEIGHT,true)));
-const firingTextures=[0,1,2].map(variant=>texture(c=>drawEnemy(c,0,variant,true),CHARACTER_WIDTH,CHARACTER_HEIGHT,true));
-const teamTextures=[0,1].map(team=>[0,1,2].map(variant=>[0,1,2,3].map(frame=>texture(c=>drawEnemy(c,frame,variant,false,team),CHARACTER_WIDTH,CHARACTER_HEIGHT,true))));
-const teamFiringTextures=[0,1].map(team=>[0,1,2].map(variant=>texture(c=>drawEnemy(c,0,variant,true,team),CHARACTER_WIDTH,CHARACTER_HEIGHT,true)));
+const actorTextures=[null,0,1].map(team=>[0,1,2].map(variant=>({
+  front:Array.from({length:WALK_FRAMES},(_,frame)=>texture(c=>drawEnemy(c,frame,variant,false,team),CHARACTER_WIDTH,CHARACTER_HEIGHT,true)),
+  back:Array.from({length:WALK_FRAMES},(_,frame)=>texture(c=>drawEnemy(c,frame,variant,false,team,true),CHARACTER_WIDTH,CHARACTER_HEIGHT,true)),
+  fire:Array.from({length:WALK_FRAMES},(_,frame)=>texture(c=>drawEnemy(c,frame,variant,true,team),CHARACTER_WIDTH,CHARACTER_HEIGHT,true))
+})));
 const teamMarkers=TEAM_COLORS.map((color,i)=>texture(c=>{c.fillStyle=color;c.strokeStyle='#17241f';c.lineWidth=6;c.fillRect(3,3,122,42);c.strokeRect(3,3,122,42);c.fillStyle='#17241f';c.font='bold 21px Arial';c.textAlign='center';c.fillText(TEAM_NAMES[i],64,32);},128,48,true));
 const targetTextures=[false,true].map(hit=>texture(c=>drawTarget(c,hit),128,192,true));
 const warningTexture=texture(c=>{c.fillStyle='#ffd66b';c.strokeStyle='#20291d';c.lineWidth=5;c.beginPath();c.moveTo(32,3);c.lineTo(61,57);c.lineTo(3,57);c.closePath();c.fill();c.stroke();c.fillStyle='#20291d';c.font='bold 38px Arial';c.textAlign='center';c.fillText('!',32,47);},64,64,true);
@@ -61,7 +64,7 @@ function updateHud(){
   $('scoreboard').hidden=!match||(!keys.has('Tab')&&mode!=='ended');
   document.querySelectorAll('[data-weapon]').forEach(b=>b.classList.toggle('selected',Number(b.dataset.weapon)===arsenal.selected));
 }
-function spawnWave(){wave++;const spots=[[-12,-12],[12,-12],[-12,11],[12,11],[0,-13],[-13,0],[13,0],[5,12],[-5,-13],[11,9],[4,-13],[-12,6]];enemies=[];for(let i=0;i<3+wave;i++){let [x,z]=spots[(i+wave-1)%spots.length];if(Math.hypot(x-player.x,z-player.z)<5){x=-x;z=-z;}enemies.push({x,z,variant:i%enemyTextures.length,yaw:Math.atan2(-x,z),hp:wave>3?3:2,phase:Math.random()*6,attack:1.2+i*.45,aim:0,fire:0,flash:0});}notify(`WAVE ${String(wave).padStart(2,'0')}\nCLEAR THE TRAINING GROUND`,2.5);tone(320,.25,'sine',.045,640);updateHud();}
+function spawnWave(){wave++;const spots=[[-12,-12],[12,-12],[-12,11],[12,11],[0,-13],[-13,0],[13,0],[5,12],[-5,-13],[11,9],[4,-13],[-12,6]];enemies=[];for(let i=0;i<3+wave;i++){let [x,z]=spots[(i+wave-1)%spots.length];if(Math.hypot(x-player.x,z-player.z)<5){x=-x;z=-z;}enemies.push({x,z,variant:i%3,heading:Math.atan2(player.x-x,z-player.z),yaw:Math.atan2(player.x-x,z-player.z)+Math.PI,moving:false,walkPhase:0,hp:wave>3?3:2,phase:Math.random()*6,attack:1.2+i*.45,aim:0,fire:0,flash:0});}notify(`WAVE ${String(wave).padStart(2,'0')}\nCLEAR THE TRAINING GROUND`,2.5);tone(320,.25,'sine',.045,640);updateHud();}
 function begin(spectator=false){
   spectator=spectator===true;document.body.classList.toggle('spectating',spectator);document.body.classList.remove('previewing');match=null;player={x:0,y:1.65,z:12,yaw:0,pitch:0};health=100;arsenal=createArsenal();projectiles=[];tracers=[];targetHits=0;targets=TRAINING_TARGETS.map(t=>({...t,flash:0}));wave=0;kills=0;elapsed=0;meds=[];waveWait=0;hurt=0;hit=0;recoil=0;flowTimer=0;keys.clear();mouseDown=false;mode=spectator?'spectating':'paused';
   $('tour-controls').hidden=!spectator;$('menu').hidden=true;$('end').hidden=true;$('pause').hidden=true;$('hud').hidden=false;
@@ -101,7 +104,7 @@ function shoot(){
   for(let pellet=0;pellet<weapon.pellets;pellet++){
     const yaw=player.yaw+(Math.random()-.5)*weapon.spread*2,pitch=player.pitch+(Math.random()-.5)*weapon.spread*2,cp=Math.cos(pitch);
     const dir={x:Math.sin(yaw)*cp,y:Math.sin(pitch),z:-Math.cos(yaw)*cp};let nearest=Math.min(weapon.range,wallDistance(player,dir)),target=null,board=null;
-    for(const e of enemies){const t=raySprite(player,dir,e,ENEMY_SIZE,Math.sin(now*5+e.phase)*.025);if(t<nearest){nearest=t;target=e;}}
+    for(const e of enemies){const t=raySprite(player,dir,e,ENEMY_SIZE,0);if(t<nearest){nearest=t;target=e;}}
     for(const b of targets){const t=raySprite(player,dir,b,2.2,0);if(t<nearest){nearest=t;target=null;board=b;}}
     if(target){target.hp--;target.flash=.12;hit=.16;if(target.hp<=0){kills++;enemies=enemies.filter(e=>e!==target);if(kills%4===0)meds.push({x:target.x,z:target.z});}}
     if(board){board.flash=.2;targetHits++;hit=.16;tone(580,.08,'triangle',.025,280);}
@@ -120,8 +123,8 @@ function tick(dt){
   if(keys.has('ArrowUp'))player.pitch=clamp(player.pitch+dt,-.85,.85);if(keys.has('ArrowDown'))player.pitch=clamp(player.pitch-dt,-.85,.85);
   let forward=Number(keys.has('KeyW'))-Number(keys.has('KeyS')),strafe=Number(keys.has('KeyD'))-Number(keys.has('KeyA'));
   const norm=Math.hypot(forward,strafe)||1,speed=(keys.has('ShiftLeft')||keys.has('ShiftRight')?6:3.8)*dt;forward/=norm;strafe/=norm;
-  move(player,(Math.sin(player.yaw)*forward+Math.cos(player.yaw)*strafe)*speed,(-Math.cos(player.yaw)*forward+Math.sin(player.yaw)*strafe)*speed);
-  player.y=1.65+(forward||strafe?Math.sin(elapsed*11)*.035:0);
+  const beforeMove={x:player.x,z:player.z};move(player,(Math.sin(player.yaw)*forward+Math.cos(player.yaw)*strafe)*speed,(-Math.cos(player.yaw)*forward+Math.sin(player.yaw)*strafe)*speed);
+  updateWalk(player,beforeMove,dt);player.y=1.65+(player.moving?Math.sin(player.walkPhase*Math.PI/4)*.035:0);
   if((mouseDown||keys.has('Space'))&&WEAPONS[arsenal.selected].automatic)shoot();
   flowTimer-=dt;if(flowTimer<=0){flow=flowField(player);flowTimer=.6;}
   for(const e of enemies){
@@ -132,7 +135,7 @@ function tick(dt){
       const dest=sight?player:nextStep(e,flow);
       if(dest){let dx=dest.x-e.x,dz=dest.z-e.z;const n=Math.hypot(dx,dz)||1,pace=(1.05+wave*.1)*dt;dx/=n;dz/=n;
         for(const other of enemies){if(other===e)continue;const sep=Math.hypot(e.x-other.x,e.z-other.z);if(sep>0&&sep<.85){dx+=(e.x-other.x)/sep*.6;dz+=(e.z-other.z)/sep*.6;}}
-        move(e,dx*pace,dz*pace,.38);
+        move(e,dx*pace,dz*pace,.38);if(!sight)turnActor(e,Math.atan2(dx,-dz),dt);
       }
     }
   }
@@ -152,8 +155,8 @@ function tickTeams(dt){
     if(keys.has('ArrowUp'))player.pitch=clamp(player.pitch+dt,-.85,.85);if(keys.has('ArrowDown'))player.pitch=clamp(player.pitch-dt,-.85,.85);
     let forward=Number(keys.has('KeyW'))-Number(keys.has('KeyS')),strafe=Number(keys.has('KeyD'))-Number(keys.has('KeyA'));
     const norm=Math.hypot(forward,strafe)||1,speed=(keys.has('ShiftLeft')||keys.has('ShiftRight')?6:3.8)*dt;
-    move(player,(Math.sin(player.yaw)*forward+Math.cos(player.yaw)*strafe)*speed/norm,(-Math.cos(player.yaw)*forward+Math.sin(player.yaw)*strafe)*speed/norm);
-    player.y=1.65+(forward||strafe?Math.sin(elapsed*11)*.035:0);player.heading=player.yaw;
+    const beforeMove={x:player.x,z:player.z};move(player,(Math.sin(player.yaw)*forward+Math.cos(player.yaw)*strafe)*speed/norm,(-Math.cos(player.yaw)*forward+Math.sin(player.yaw)*strafe)*speed/norm);
+    updateWalk(player,beforeMove,dt);player.y=1.65+(player.moving?Math.sin(player.walkPhase*Math.PI/4)*.035:0);player.heading=player.yaw;
     if((mouseDown||keys.has('Space'))&&WEAPONS[arsenal.selected].automatic)shoot();
   }
   tickMatch(match,dt);
@@ -174,11 +177,11 @@ function tickTeams(dt){
   }
 }
 function drawSprite(e,tex,camera,size=ENEMY_SIZE,base=0,flash=0){const data=[];quad(data,spriteCorners(e,e.yaw??camera.yaw,size,base),[1,1,1],[[0,1],[1,1],[1,0],[0,0]]);bind(spriteBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1f(loc.uFlash,flash);gl.drawArrays(gl.TRIANGLES,0,6);}
-function drawWeapon(){wc.clearRect(0,0,width,height);if(mode==='menu'||mode==='ended'||mode==='spectating'||(match&&player.hp<=0))return;const moving=mode==='playing'&&(keys.has('KeyW')||keys.has('KeyS')||keys.has('KeyA')||keys.has('KeyD'));drawPlayerWeapon(wc,width,height,{selected:arsenal.selected,recoil,reload:arsenal.reload,bob:moving?Math.sin(elapsed*10)*4:0,time:now});}
+function drawWeapon(){wc.clearRect(0,0,width,height);if(mode==='menu'||mode==='ended'||mode==='spectating'||(match&&player.hp<=0))return;const moving=mode==='playing'&&player.moving;drawPlayerWeapon(wc,width,height,{selected:arsenal.selected,recoil,reload:arsenal.reload,bob:moving?Math.sin(player.walkPhase*Math.PI/4)*4:0,time:now});}
 function drawDecalPlane(d,tex){const c=Math.cos(d.yaw)*d.w/2,s=Math.sin(d.yaw)*d.w/2,data=[];quad(data,[[d.x-c,d.y,d.z-s],[d.x+c,d.y,d.z+s],[d.x+c,d.y+d.h,d.z+s],[d.x-c,d.y+d.h,d.z-s]],[1,1,1],[[0,1],[1,1],[1,0],[0,0]]);bind(spriteBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1f(loc.uFlash,0);gl.drawArrays(gl.TRIANGLES,0,6);}
 function showTour(){document.body.classList.remove('spectating');match=null;mode='tour';document.body.classList.add('previewing');$('menu').hidden=true;$('pause').hidden=true;$('hud').hidden=false;$('tour-controls').hidden=false;$('notice').textContent='';health=100;arsenal=createArsenal();updateHud();}
 function exitTour(){document.body.classList.remove('spectating');match=null;enemies=[];tracers=[];mode='menu';document.body.classList.remove('previewing');$('menu').hidden=false;$('hud').hidden=true;$('tour-controls').hidden=true;}
-function drawMap(camera=player,actors=enemies){map.clearRect(0,0,150,150);map.fillStyle='#a6b49e55';for(const b of [...cover,...walls])map.fillRect(75+(b.x-b.w/2)*4,75+(b.z-b.d/2)*4,b.w*4,b.d*4);for(const e of actors){if(match&&!match.spectator&&e.team!==player.team&&!visible(player,e))continue;map.fillStyle=e.team===undefined?'#ff7950':TEAM_COLORS[e.team];map.fillRect(73+e.x*4,73+e.z*4,4,4);}map.fillStyle='#68e4c2';for(const m of meds)map.fillRect(73+m.x*4,73+m.z*4,4,4);map.save();map.translate(75+camera.x*4,75+camera.z*4);map.rotate(camera.yaw);map.fillStyle='#f5edcc';map.beginPath();map.moveTo(0,-5);map.lineTo(4,4);map.lineTo(0,2);map.lineTo(-4,4);map.fill();map.restore();}
+function drawMap(camera=player,actors=enemies){const spectator=mode==='spectating',preview=mode==='tour';drawMinimap(map,camera,actors,{spectator,preview,meds,targets});$('map-caption').textContent=spectator?'ALL TEAMS · NORTH UP':preview?'GROUND PLAN · NORTH UP':'VISIBLE ENEMIES · NORTH UP';}
 function render(time){
   now=time/1000;const dt=Math.min(now-last,.04);last=now;
   if(width!==innerWidth||height!==innerHeight){width=innerWidth;height=innerHeight;canvas.width=Math.round(width*Math.min(devicePixelRatio,1.5));canvas.height=Math.round(height*Math.min(devicePixelRatio,1.5));weaponCanvas.width=width;weaponCanvas.height=height;gl.viewport(0,0,canvas.width,canvas.height);}
@@ -194,15 +197,16 @@ function render(time){
   for(const t of targets)drawSprite(t,targetTextures[t.flash>0?1:0],camera,2.2,0);
   const actors=mode==='menu'||mode==='tour'?[{x:8,z:8,variant:0,yaw:-.25,phase:0,flash:0},{x:12,z:1,variant:1,yaw:-.5,phase:1,flash:0},{x:-10,z:-8,variant:2,yaw:0,phase:2,flash:0}].map((a,i)=>({...a,team:mode==='menu'&&selectedMode==='teams'?(i===0?0:1):undefined})):enemies;
   for(const e of actors){
-    const frame=e.aim>0?0:Math.floor(now*5+e.phase)%4;const tex=e.team===undefined?(e.fire>0?firingTextures[e.variant]:enemyTextures[e.variant??0][frame]):(e.fire>0?teamFiringTextures[e.team][e.variant]:teamTextures[e.team][e.variant][frame]);
-    drawSprite(e,tex,camera,ENEMY_SIZE,Math.sin(now*5+e.phase)*.025,e.flash>0?.65:0);
+    const frame=walkFrame(e),set=actorTextures[e.team===undefined?0:e.team+1][e.variant??0];
+    const tex=showsBack(e,camera)?set.back[frame]:e.fire>0?set.fire[frame]:set.front[frame];
+    drawSprite(e,tex,camera,ENEMY_SIZE,0,e.flash>0?.65:0);
     if(e.team!==undefined)drawDecalPlane({x:e.x,y:2.4,z:e.z,w:.85,h:.32,yaw:camera.yaw},teamMarkers[e.team]);
     if(e.aim>0&&e.team===undefined)drawDecalPlane({x:e.x,y:2.5,z:e.z,w:.42,h:.42,yaw:camera.yaw},warningTexture);
   }
   for(const b of projectiles)drawDecalPlane({x:b.x,y:b.y-.1,z:b.z,w:.2,h:.2,yaw:camera.yaw},projectileTexture);
   for(const m of meds)drawSprite(m,medTexture,camera,1.1,.1+Math.sin(now*3)*.1);
   if(tracers.length){const data=[];for(const t of tracers)for(const p of [t.a,t.b])data.push(p.x,p.y,p.z,1,.83,.42,0,0);gl.uniform1f(loc.uSprite,0);gl.uniform1f(loc.uFlash,0);bind(spriteBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.drawArrays(gl.LINES,0,data.length/8);}
-  drawWeapon();if(mode==='playing'||mode==='tour'||mode==='spectating')drawMap(camera,actors);$('damage').style.opacity=hurt;$('hitmarker').style.opacity=hit>0?1:0;
+  drawWeapon();if(mode==='playing'||mode==='tour'||mode==='spectating'||mode==='paused'||mode==='locking')drawMap(camera,actors);$('damage').style.opacity=hurt;$('hitmarker').style.opacity=hit>0?1:0;
 requestAnimationFrame(render);
 }
 $('start').onclick=begin;$('retry').onclick=begin;$('restart').onclick=begin;$('resume').onclick=lock;$('sound').onclick=()=>{muted=!muted;$('sound').textContent=muted?'SOUND OFF':'SOUND ON';};
