@@ -59,3 +59,9 @@ The standalone 3D FPS is hosted at https://prioritydesk.co.uk/Deadsignal/ (case-
 Source: https://github.com/ltaylor8891/dead-signal. To update, run `npm test` in the game repository and copy its `dist` contents into this directory, then commit and push to `main`. The game uses real mouse capture; play in a standalone desktop browser and click **Enter the outpost**, with Escape releasing the pointer.
 
 Dead Signal now uses original, smooth cartoon character cutouts: thick black outlines, oversized expressive heads, and olive, khaki, and blue clothing. View the animated lineup at https://prioritydesk.co.uk/Deadsignal/characters.html. The character drawing module is bundled locally; no external images or fonts are needed.
+
+## Motor Calculator
+
+The Taynium Motor / Conveyor Calculator (v1.3.0) is hosted at https://prioritydesk.co.uk/motorcalc/ (lowercase). It is a single self-contained page: `dist/motorcalc/index.html` plus `taynium-logo.svg`, with no build step.
+
+Source: https://github.com/ltaylor8891/motor-calculator (`motor-calculator-app/`). To update, copy `index.html` and `taynium-logo.svg` from that folder into `dist/motorcalc/`, then commit and push to `main`.

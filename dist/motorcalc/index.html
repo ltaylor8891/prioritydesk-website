@@ -1,0 +1,1908 @@
+<!DOCTYPE html>
+<!--
+  Motor / Conveyor Calculator v1.3.0 — Taynium. Self-contained: no build step, no external dependencies.
+
+  Copyright (c) 2026 Taynium (Luke Taylor). All rights reserved.
+  Proprietary and confidential — no license is granted to copy, modify,
+  redistribute, or reuse this code without prior written permission.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Motor / Conveyor Calculator — Taynium</title>
+<meta name="description" content="Browser-based motor and conveyor calculator: VFD speeds, torque, star/delta drive force, crop throughput, incline payload, plus reverse sizing that recommends a gearbox ratio and IE3 motor kW with estimated full-load amps.">
+<meta property="og:title" content="Motor / Conveyor Calculator — Taynium">
+<meta property="og:description" content="Enter the machine and get speeds, forces and throughput — or enter desired belt speed and throughput and get a recommended gearbox ratio and motor kW for star and delta running.">
+<meta property="og:type" content="website">
+<link rel="icon" href="./taynium-logo.svg" type="image/svg+xml">
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #16181b;
+  --panel-bg: #1f2226;
+  --panel-border: #33383e;
+  --text: #d7dbe0;
+  --text-dim: #8b939c;
+  --accent: #4f9cf0;
+  --warn: #e0a83c;
+  --good: #3fae6a;
+  --bad: #c05555;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); height: 100%; color: var(--text); margin: 0; }
+
+.app-layout {
+  display: grid;
+  grid-template:
+    "toolbar toolbar toolbar" 64px
+    "inputs results report" 1fr
+    "status status status" 32px
+    / 300px 1fr 360px;
+  height: 100%;
+}
+
+/* ---------- Toolbar ---------- */
+.toolbar {
+  grid-area: toolbar;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 0 12px;
+}
+.toolbar-brand { flex-shrink: 0; display: flex; align-items: center; }
+.toolbar-logo { object-fit: contain; width: auto; height: 56px; display: block; }
+.toolbar-title { white-space: nowrap; flex-shrink: 0; font-weight: 600; }
+.toolbar-tabs { display: flex; gap: 6px; flex-shrink: 0; margin-left: 4px; }
+.tab-btn.active { border-color: var(--accent); background: #2c3d52; }
+.toolbar-group { flex-shrink: 0; display: flex; align-items: center; gap: 6px; }
+.toolbar-group:first-of-type { margin-left: auto; }
+.toolbar-copyright {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+  color: var(--text-dim);
+  flex-shrink: 1;
+  margin-left: 8px;
+  font-size: 0.72rem;
+  overflow: hidden;
+}
+
+/* ---------- Panels ---------- */
+.panel { background: var(--panel-bg); padding: 12px; overflow-y: auto; }
+.panel h2 {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+}
+.inputs-panel { grid-area: inputs; border-right: 1px solid var(--panel-border); }
+.report-panel { grid-area: report; border-left: 1px solid var(--panel-border); display: flex; flex-direction: column; }
+
+.property-section {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 14px 0 6px;
+  font-size: 0.75rem;
+}
+.property-section:first-of-type { margin-top: 0; }
+
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.field label {
+  color: var(--text-dim);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+.field-unit { opacity: 0.8; margin-left: auto; font-size: 0.75rem; }
+.field input {
+  width: 100%;
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  background: var(--bg);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}
+.field-invalid input { background: #2a1f1f; border-color: #c05555; }
+.field-error { color: #e8a0a0; font-size: 0.75rem; }
+.hint { color: var(--text-dim); margin-top: 14px; font-size: 0.8rem; line-height: 1.5; }
+
+button {
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  cursor: pointer;
+  background: #2a2f35;
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- Results ---------- */
+.results-area {
+  grid-area: results;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+.validation-banner {
+  display: none;
+  background: #2a1f1f;
+  border: 1px solid #5a3030;
+  border-radius: 4px;
+  color: #e8a0a0;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+.validation-banner.visible { display: block; }
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+.results-grid.stale { opacity: 0.35; pointer-events: none; }
+.result-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+.result-card.recommend { border-color: var(--accent); grid-column: 1 / -1; }
+.recommend-pair { display: flex; gap: 32px; flex-wrap: wrap; }
+.result-card h3 {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.result-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 0.88rem;
+}
+.result-row .rlabel { color: var(--text-dim); }
+.result-row .rvalue {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.result-row .runit { color: var(--text-dim); font-size: 0.75rem; width: 42px; }
+.result-hero {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  margin: 2px 0 6px;
+}
+.result-hero .runit { font-size: 0.8rem; color: var(--text-dim); font-weight: 400; }
+.result-hero .rsub { font-size: 0.78rem; color: var(--text-dim); font-weight: 400; display: block; }
+.formula {
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  padding: 8px 10px;
+  margin: 6px 0;
+  white-space: pre;
+  overflow-x: auto;
+}
+.sym-list { font-size: 0.8rem; line-height: 1.7; color: var(--text-dim); }
+.sym-list code {
+  color: var(--accent);
+  font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
+  font-size: 0.8rem;
+}
+.rvalue.good { color: var(--good); }
+.rvalue.bad { color: #e8a0a0; }
+.rvalue.warn { color: var(--warn); }
+.card-note { color: var(--text-dim); font-size: 0.75rem; line-height: 1.45; margin-top: 6px; }
+.card-note.warn-note { color: var(--warn); }
+
+/* ---------- Report panel ---------- */
+.report-text {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: ui-monospace, Consolas, "Cascadia Mono", monospace;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  padding: 10px 12px;
+  white-space: pre;
+  overflow: auto;
+  margin: 0;
+}
+.panel-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+/* ---------- Status bar ---------- */
+.status-bar {
+  grid-area: status;
+  color: var(--text-dim);
+  background: var(--panel-bg);
+  border-top: 1px solid var(--panel-border);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.status-set { display: flex; align-items: center; gap: 20px; min-width: 0; }
+.status-bar .sval { color: var(--text); font-variant-numeric: tabular-nums; }
+.status-flag { margin-left: auto; }
+.status-flag.ok { color: var(--good); }
+.status-flag.err { color: var(--warn); font-weight: 600; }
+
+[hidden] { display: none !important; }
+
+/* ---------- Narrow screens ---------- */
+@media (max-width: 960px) {
+  html, body { height: auto; }
+  .app-layout {
+    grid-template:
+      "toolbar" auto
+      "inputs" auto
+      "results" auto
+      "report" auto
+      "status" 32px
+      / 1fr;
+    height: auto;
+    min-height: 100%;
+  }
+  .toolbar { flex-wrap: wrap; height: auto; padding: 8px 12px; }
+  .inputs-panel { border-right: none; border-bottom: 1px solid var(--panel-border); }
+  .report-panel { border-left: none; border-top: 1px solid var(--panel-border); }
+  .report-text { min-height: 300px; }
+}
+</style>
+</head>
+<body>
+<noscript>
+  <div style="padding:24px;font-size:0.95rem;max-width:40rem;margin:0 auto;">
+    <strong>JavaScript is required.</strong> This calculator runs entirely in your browser —
+    nothing is sent to a server — but it needs JavaScript enabled to compute results.
+  </div>
+</noscript>
+<div class="app-layout">
+
+  <header class="toolbar">
+    <span class="toolbar-brand" title="Taynium">
+      <img class="toolbar-logo" alt="Taynium" width="240" height="56" src="./taynium-logo.svg">
+    </span>
+    <span class="toolbar-title">Motor / Conveyor Calculator</span>
+    <nav class="toolbar-tabs" aria-label="Calculator mode">
+      <button type="button" class="tab-btn active" id="tab-forward"
+        title="Enter the machine — get speeds, forces and throughput">Performance</button>
+      <button type="button" class="tab-btn" id="tab-sizing"
+        title="Enter desired belt speed and throughput — get a recommended ratio and motor kW">Sizing</button>
+      <button type="button" class="tab-btn" id="tab-reference"
+        title="Every formula used by this calculator, as implemented">Calculations</button>
+    </nav>
+    <div class="toolbar-group" aria-label="File">
+      <button type="button" id="btn-reset" title="Restore default inputs on this tab">Reset</button>
+      <button type="button" id="btn-load" title="Load an inputs JSON file (Ctrl+O)">Load</button>
+      <button type="button" id="btn-save" title="Download inputs JSON (Ctrl+S)">Save</button>
+      <input id="inputs-file-input" accept="application/json,.json" hidden type="file">
+    </div>
+    <div class="toolbar-group" aria-label="Report">
+      <button type="button" id="btn-copy" title="Copy the plain-text report to the clipboard">Copy report</button>
+      <button type="button" id="btn-download" title="Download the plain-text report">Download</button>
+    </div>
+    <span class="toolbar-copyright">Copyright © 2026 Taynium. All rights reserved.</span>
+  </header>
+
+  <aside class="panel inputs-panel" aria-label="Calculator inputs">
+    <h2>Inputs</h2>
+    <section id="inputs-forward">
+      <form id="form-forward" novalidate></form>
+      <p class="hint">Values recalculate as you type. Slip is a percentage (enter 6 for 6%).
+      Drive efficiency is a fraction from 0 to 1. Frequencies must satisfy Min &le; Standard &le; Max.
+      Enter the motor nameplate: rated power, speed, frequency, &Delta; voltage and currents (0 = estimate from
+      IE3). Delta is assumed to run on the 87 Hz characteristic. Starting torque available is a % of rated
+      (about 150% on a VFD).</p>
+    </section>
+    <section id="inputs-sizing" hidden>
+      <form id="form-sizing" novalidate></form>
+      <p class="hint">Enter the belt speed and throughput you want at the standard frequency.
+      Target safety factor is available running force &divide; required force (1.5 is a typical margin). The motor
+      is also sized to start the load against the breakaway friction and acceleration.</p>
+    </section>
+    <section id="inputs-reference" hidden>
+      <h3 class="property-section">Symbols</h3>
+      <div class="sym-list">
+        <div><code>f</code> — VFD frequency (Hz)</div>
+        <div><code>p</code> — motor poles</div>
+        <div><code>N_rated</code>, <code>f_rated</code> — nameplate speed (rpm), frequency (Hz)</div>
+        <div><code>s</code> — slip from the nameplate speed</div>
+        <div><code>P</code> — motor power (kW)</div>
+        <div><code>V</code> — supply voltage, line-line (V)</div>
+        <div><code>i</code> — gear ratio</div>
+        <div><code>&eta;d</code> — drive efficiency (0–1)</div>
+        <div><code>r</code> — shaft radius (mm)</div>
+        <div><code>&mu;</code> — running friction coefficient</div>
+        <div><code>m_shaft</code>, <code>m_belt</code> — masses (kg)</div>
+        <div><code>&rho;</code> — crop density (kg/m&sup3;)</div>
+        <div><code>h</code> — crop height/depth (m)</div>
+        <div><code>L</code>, <code>w</code> — conveyor length, width (m)</div>
+        <div><code>&theta;</code> — inclination (deg)</div>
+        <div><code>v</code> — belt speed (m/min)</div>
+        <div><code>V&Delta;</code> — motor rated delta (winding) voltage (V)</div>
+        <div><code>f_base</code> — VFD base frequency of a connection (Hz)</div>
+        <div><code>&mu;s</code> — breakaway (static) friction coefficient</div>
+        <div><code>t_acc</code> — acceleration time (s)</div>
+        <div><code>start%</code> — starting torque available (% rated)</div>
+        <div><code>SF</code> — safety factor (available &divide; required)</div>
+        <div><code>&eta;</code>, <code>pf</code> — motor efficiency, power factor</div>
+        <div><code>N</code> — rotational speed (rpm)</div>
+        <div><code>T</code> — torque (Nm)</div>
+        <div><code>F</code> — force (N or kgf)</div>
+        <div><code>C</code> — shaft circumference (m)</div>
+      </div>
+      <p class="hint">These formulas are exactly what this page computes — ported line-for-line from the
+      original SolidWorks macro. An engineering approximation for sizing and rough validation, not a
+      certified calculation.</p>
+    </section>
+  </aside>
+
+  <main class="results-area" aria-label="Results">
+    <div class="validation-banner" id="validation-banner" role="alert"></div>
+
+    <!-- ================= Performance tab ================= -->
+    <div class="results-grid" id="results-forward">
+
+      <div class="result-card">
+        <h3>Conveyor speed</h3>
+        <div class="result-hero"><span id="hero-speed">—</span> <span class="runit">m/min</span></div>
+        <div class="result-row"><span class="rlabel">Shaft circumference</span><span class="rvalue" id="r-circ">—</span><span class="runit">m</span></div>
+        <div class="result-row"><span class="rlabel">Cycles per minute</span><span class="rvalue" id="r-cycles">—</span><span class="runit"></span></div>
+      </div>
+
+      <div class="result-card">
+        <h3>Crop throughput</h3>
+        <div class="result-hero"><span id="hero-tph">—</span> <span class="runit">t/h</span></div>
+        <div class="result-row"><span class="rlabel">Throughput</span><span class="rvalue" id="r-kgmin">—</span><span class="runit">kg/min</span></div>
+        <div class="result-row"><span class="rlabel">Crop loading</span><span class="rvalue" id="r-kgm">—</span><span class="runit">kg/m</span></div>
+        <div class="result-row"><span class="rlabel">Crop total on conveyor</span><span class="rvalue" id="r-croptotal">—</span><span class="runit">kg</span></div>
+      </div>
+
+      <div class="result-card">
+        <h3>Motor speed</h3>
+        <div class="result-row"><span class="rlabel">Motor RPM min</span><span class="rvalue" id="r-mrpm-min">—</span><span class="runit">rpm</span></div>
+        <div class="result-row"><span class="rlabel">Motor RPM standard</span><span class="rvalue" id="r-mrpm-std">—</span><span class="runit">rpm</span></div>
+        <div class="result-row"><span class="rlabel">Motor RPM max</span><span class="rvalue" id="r-mrpm-max">—</span><span class="runit">rpm</span></div>
+      </div>
+
+      <div class="result-card">
+        <h3>Drive speed</h3>
+        <div class="result-row"><span class="rlabel">Drive RPM min</span><span class="rvalue" id="r-drpm-min">—</span><span class="runit">rpm</span></div>
+        <div class="result-row"><span class="rlabel">Drive RPM standard</span><span class="rvalue" id="r-drpm-std">—</span><span class="runit">rpm</span></div>
+        <div class="result-row"><span class="rlabel">Drive RPM max</span><span class="rvalue" id="r-drpm-max">—</span><span class="runit">rpm</span></div>
+      </div>
+
+      <div class="result-card">
+        <h3>Star / delta on the VFD (87 Hz delta)</h3>
+        <div class="result-row"><span class="rlabel">Base frequency star</span><span class="rvalue" id="r-base-star">—</span><span class="runit">Hz</span></div>
+        <div class="result-row"><span class="rlabel">Base frequency delta</span><span class="rvalue" id="r-base-delta">—</span><span class="runit">Hz</span></div>
+        <div class="result-row"><span class="rlabel">Power star min / std / max</span><span class="rvalue" id="r-power-star">—</span><span class="runit">kW</span></div>
+        <div class="result-row"><span class="rlabel">Power delta min / std / max</span><span class="rvalue" id="r-power-delta">—</span><span class="runit">kW</span></div>
+        <p class="card-note">Both connections use the nameplate rating. The VFD holds V/f at the nameplate ratio, so each
+        connection gives rated torque up to its base frequency. Star reaches the supply voltage at about the rated
+        frequency, then field-weakens (torque &times; base/f, power stays rated). Delta reaches it at about 87 Hz, so it
+        keeps rated torque and its power rises with frequency, up to &radic;3 &times; rated at 87 Hz.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Torque</h3>
+        <div class="result-row"><span class="rlabel">Motor rated torque (nameplate)</span><span class="rvalue" id="r-mtorque">—</span><span class="runit">Nm</span></div>
+        <div class="result-row"><span class="rlabel">Star @ <span id="r-hz-std">50</span> Hz</span><span class="rvalue" id="r-mtorque-star">—</span><span class="runit">Nm</span></div>
+        <div class="result-row"><span class="rlabel">Delta @ <span id="r-hz-std-2">50</span> Hz</span><span class="rvalue" id="r-mtorque-delta">—</span><span class="runit">Nm</span></div>
+        <div class="result-row"><span class="rlabel">Star @ <span id="r-hz-max">70</span> Hz</span><span class="rvalue" id="r-mtorque-star-max">—</span><span class="runit">Nm</span></div>
+        <div class="result-row"><span class="rlabel">Delta @ <span id="r-hz-max-2">70</span> Hz</span><span class="rvalue" id="r-mtorque-delta-max">—</span><span class="runit">Nm</span></div>
+        <div class="result-row"><span class="rlabel">Drive torque star</span><span class="rvalue" id="r-dtorque-star">—</span><span class="runit">Nm</span></div>
+        <div class="result-row"><span class="rlabel">Drive torque delta</span><span class="rvalue" id="r-dtorque-delta">—</span><span class="runit">Nm</span></div>
+      </div>
+
+      <div class="result-card">
+        <h3>Drive force</h3>
+        <div class="result-row"><span class="rlabel">Star</span><span class="rvalue" id="r-force-star-n">—</span><span class="runit">N</span></div>
+        <div class="result-row"><span class="rlabel">Star</span><span class="rvalue" id="r-force-star-kg">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Delta</span><span class="rvalue" id="r-force-delta-n">—</span><span class="runit">N</span></div>
+        <div class="result-row"><span class="rlabel">Delta</span><span class="rvalue" id="r-force-delta-kg">—</span><span class="runit">kgf</span></div>
+      </div>
+
+      <div class="result-card">
+        <h3>Running force &amp; payload</h3>
+        <div class="result-row"><span class="rlabel">Friction (running) force</span><span class="rvalue" id="r-friction-kg">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Lift force (crop at <span id="r-theta">0</span>&deg;)</span><span class="rvalue" id="r-lift-kg">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Total required force</span><span class="rvalue" id="r-incline-n">—</span><span class="runit">N</span></div>
+        <div class="result-row"><span class="rlabel">Total required force</span><span class="rvalue" id="r-incline-kg">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Available payload star</span><span class="rvalue" id="r-payload-star">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Available payload delta</span><span class="rvalue" id="r-payload-delta">—</span><span class="runit">kgf</span></div>
+      </div>
+
+      <div class="result-card">
+        <h3>Running</h3>
+        <div class="result-row"><span class="rlabel">Required motor torque</span><span class="rvalue" id="r-run-torque">—</span><span class="runit">Nm</span></div>
+        <div class="result-row"><span class="rlabel">Absorbed power</span><span class="rvalue" id="r-run-power">—</span><span class="runit">kW</span></div>
+        <div class="result-row"><span class="rlabel">Safety factor star</span><span class="rvalue" id="r-sf-run-star">—</span><span class="runit"></span></div>
+        <div class="result-row"><span class="rlabel">Safety factor delta</span><span class="rvalue" id="r-sf-run-delta">—</span><span class="runit"></span></div>
+        <div class="result-row"><span class="rlabel">SF star @ <span id="r-hz-max-3">70</span> Hz (max)</span><span class="rvalue" id="r-sf-run-star-max">—</span><span class="runit"></span></div>
+        <div class="result-row"><span class="rlabel">SF delta @ max Hz</span><span class="rvalue" id="r-sf-run-delta-max">—</span><span class="runit"></span></div>
+        <p class="card-note">Safety factor = available drive force &divide; total required force, at the standard frequency
+        unless shown. &ge; 1.5 OK, 1.0–1.5 marginal, below 1.0 the drive cannot keep the load moving.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Starting</h3>
+        <div class="result-row"><span class="rlabel">Breakaway friction force</span><span class="rvalue" id="r-start-breakaway">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Lift force</span><span class="rvalue" id="r-start-lift">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Acceleration force</span><span class="rvalue" id="r-start-accel">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Total starting force</span><span class="rvalue" id="r-start-force">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Required motor torque</span><span class="rvalue" id="r-start-torque">—</span><span class="runit">Nm</span></div>
+        <div class="result-row"><span class="rlabel">Available (<span id="r-start-pct">150</span>% rated)</span><span class="rvalue" id="r-start-avail">—</span><span class="runit">Nm</span></div>
+        <div class="result-row"><span class="rlabel">Safety factor starting</span><span class="rvalue" id="r-sf-start">—</span><span class="runit"></span></div>
+        <div class="result-row"><span class="rlabel">Motor rating needed to start</span><span class="rvalue" id="r-start-power">—</span><span class="runit">kW</span></div>
+        <p class="card-note">The VFD starts at low frequency, below either base frequency, so star and delta have the
+        same starting torque. Breakaway uses the static friction coefficient; acceleration brings the whole moving mass
+        to belt speed in the set time. Motor and gearbox rotating inertia is not included.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Motor current</h3>
+        <div class="result-row"><span class="rlabel">Rated current star @ <span id="r-v-star">398</span> V</span><span class="rvalue" id="r-amps-star">—</span><span class="runit">A</span></div>
+        <div class="result-row"><span class="rlabel">Rated current delta @ <span id="r-v-delta">230</span> V</span><span class="rvalue" id="r-amps-delta">—</span><span class="runit">A</span></div>
+        <p class="card-note"><span id="r-current-source"></span> Overload setting = rated current of the chosen
+        connection. In 87 Hz delta the VFD must be rated for the delta current (&radic;3 &times; star).</p>
+      </div>
+
+    </div>
+
+<!-- ================= Sizing tab ================= -->
+    <div class="results-grid" id="results-sizing" hidden>
+
+      <div class="result-card recommend">
+        <h3>Recommendation</h3>
+        <div class="recommend-pair">
+          <div>
+            <div class="result-hero"><span id="z-ratio-std">—</span> <span class="runit">: 1 gearbox</span>
+              <span class="rsub">exact requirement <span id="z-ratio-exact">—</span> : 1</span></div>
+          </div>
+          <div>
+            <div class="result-hero"><span id="z-kw-std">—</span> <span class="runit">kW star</span>
+              <span class="rsub">needs <span id="z-kw-exact">—</span> kW &middot; rated <span id="z-fla-star-hero">—</span> A</span></div>
+          </div>
+          <div>
+            <div class="result-hero"><span id="z-kw-std-delta">—</span> <span class="runit">kW delta (87 Hz)</span>
+              <span class="rsub">needs <span id="z-kw-exact-delta">—</span> kW &middot; rated <span id="z-fla-delta-hero">—</span> A</span></div>
+          </div>
+        </div>
+        <p class="card-note">Sized by <strong id="z-governs">running</strong>. Nearest standard gearbox ratio, then the
+        next standard IEC nameplate rating for each connection that meets both the running safety factor at the
+        standard frequency and the starting torque. Up to about 50 Hz both connections need the same motor; above it,
+        star field-weakens and needs a larger motor, while 87 Hz delta keeps rated torque. Amps are IE3 estimates.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Speeds</h3>
+        <div class="result-row"><span class="rlabel">Motor RPM standard</span><span class="rvalue" id="z-mrpm">—</span><span class="runit">rpm</span></div>
+        <div class="result-row"><span class="rlabel">Required drive RPM</span><span class="rvalue" id="z-drpm">—</span><span class="runit">rpm</span></div>
+        <div class="result-row"><span class="rlabel">Shaft circumference</span><span class="rvalue" id="z-circ">—</span><span class="runit">m</span></div>
+      </div>
+
+      <div class="result-card">
+        <h3>Star / delta on the VFD (87 Hz delta)</h3>
+        <div class="result-row"><span class="rlabel">Base frequency star</span><span class="rvalue" id="z-base-star">—</span><span class="runit">Hz</span></div>
+        <div class="result-row"><span class="rlabel">Base frequency delta</span><span class="rvalue" id="z-base-delta">—</span><span class="runit">Hz</span></div>
+        <div class="result-row"><span class="rlabel">Torque factor star @ <span id="z-hz-std">50</span> Hz</span><span class="rvalue" id="z-tf-star">—</span><span class="runit">&times;</span></div>
+        <div class="result-row"><span class="rlabel">Torque factor delta @ <span id="z-hz-std-2">50</span> Hz</span><span class="rvalue" id="z-tf-delta">—</span><span class="runit">&times;</span></div>
+        <p class="card-note">Rated torque up to the base frequency, then &times; base/f (field weakening).</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Implied crop load</h3>
+        <div class="result-row"><span class="rlabel">Crop loading</span><span class="rvalue" id="z-kgm">—</span><span class="runit">kg/m</span></div>
+        <div class="result-row"><span class="rlabel">Crop total on conveyor</span><span class="rvalue" id="z-croptotal">—</span><span class="runit">kg</span></div>
+        <div class="result-row"><span class="rlabel">Friction (running) force</span><span class="rvalue" id="z-friction-kg">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Lift force (crop at <span id="z-theta">0</span>&deg;)</span><span class="rvalue" id="z-lift-kg">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Total required force</span><span class="rvalue" id="z-incline-kg">—</span><span class="runit">kgf</span></div>
+        <div class="result-row"><span class="rlabel">Total starting force</span><span class="rvalue" id="z-start-kg">—</span><span class="runit">kgf</span></div>
+      </div>
+
+      <div class="result-card">
+        <h3>Torque &amp; power required</h3>
+        <div class="result-row"><span class="rlabel">Motor torque running</span><span class="rvalue" id="z-mtorque">—</span><span class="runit">Nm</span></div>
+        <div class="result-row"><span class="rlabel">Absorbed power running</span><span class="rvalue" id="z-run-power">—</span><span class="runit">kW</span></div>
+        <div class="result-row"><span class="rlabel">Motor torque starting</span><span class="rvalue" id="z-mtorque-start">—</span><span class="runit">Nm</span></div>
+        <div class="result-row"><span class="rlabel">Rating for SF <span id="z-sf-target">1.5</span> star / delta</span><span class="rvalue" id="z-kw-run">—</span><span class="runit">kW</span></div>
+        <div class="result-row"><span class="rlabel">Rating to start</span><span class="rvalue" id="z-kw-start">—</span><span class="runit">kW</span></div>
+        <div class="result-row"><span class="rlabel">Motor power needed star</span><span class="rvalue" id="z-kw-req">—</span><span class="runit">kW</span></div>
+        <div class="result-row"><span class="rlabel">Motor power needed delta</span><span class="rvalue" id="z-kw-req-delta">—</span><span class="runit">kW</span></div>
+        <p class="card-note">Nameplate ratings. Each connection needs the larger of its running rating and the
+        starting rating.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>IE3 electrical estimate</h3>
+        <div class="result-row"><span class="rlabel">Star motor eff / pf</span><span class="rvalue" id="z-eff-star">—</span><span class="runit"></span></div>
+        <div class="result-row"><span class="rlabel">Star motor rated current (Y)</span><span class="rvalue" id="z-fla-star">—</span><span class="runit">A</span></div>
+        <div class="result-row"><span class="rlabel">Delta motor eff / pf</span><span class="rvalue" id="z-eff-delta">—</span><span class="runit"></span></div>
+        <div class="result-row"><span class="rlabel">Delta motor rated current (&Delta;)</span><span class="rvalue" id="z-fla-delta">—</span><span class="runit">A</span></div>
+        <p class="card-note">Overload setting = rated current of the chosen connection; in 87 Hz delta the VFD must
+        supply the delta current. Typical IE3 values (50 Hz, 4-pole) — verify against the motor nameplate.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Check with standard picks</h3>
+        <div class="result-row"><span class="rlabel">Actual belt speed</span><span class="rvalue" id="z-actual-speed">—</span><span class="runit">m/min</span></div>
+        <div class="result-row"><span class="rlabel">Actual throughput</span><span class="rvalue" id="z-actual-tph">—</span><span class="runit">t/h</span></div>
+        <div class="result-row"><span class="rlabel">SF running — star motor</span><span class="rvalue" id="z-sf-run-star">—</span><span class="runit"></span></div>
+        <div class="result-row"><span class="rlabel">SF running — delta motor</span><span class="rvalue" id="z-sf-run-delta">—</span><span class="runit"></span></div>
+        <div class="result-row"><span class="rlabel">SF starting — star motor</span><span class="rvalue" id="z-sf-start-star">—</span><span class="runit"></span></div>
+        <div class="result-row"><span class="rlabel">SF starting — delta motor</span><span class="rvalue" id="z-sf-start-delta">—</span><span class="runit"></span></div>
+        <div class="result-row"><span class="rlabel">Speed error vs target</span><span class="rvalue" id="z-speed-err">—</span><span class="runit">%</span></div>
+        <p class="card-note">Recomputed with the standard gearbox ratio and standard motor sizes, keeping the same
+        crop loading (kg/m). Trim the VFD standard frequency to close the speed error.</p>
+      </div>
+
+    </div>
+
+<!-- ================= Calculations reference tab ================= -->
+    <div class="results-grid" id="results-reference" hidden style="grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));">
+
+      <div class="result-card">
+        <h3>Constants</h3>
+        <pre class="formula">1 N = 0.101971621297793 kgf
+(standard gravity g = 9.80665 m/s&sup2;)
+
+&radic;3 = 1.7320508</pre>
+        <p class="card-note">Safety-factor bands: &ge; 1.5 OK, 1.0–1.5 marginal, &lt; 1.0 the drive cannot move the load.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Motor &amp; drive speed</h3>
+        <pre class="formula">s = 1 - N_rated / (120 &times; f_rated / p)
+
+N_motor = (f &times; 120 / p) &times; (1 - s)   [rpm]
+          evaluated at f_min, f_std, f_max
+
+N_drive = N_motor / i                 [rpm]</pre>
+        <p class="card-note">Slip from the nameplate rated speed, held at the same fraction on the VFD.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Motor rated torque</h3>
+        <pre class="formula">T_rated = P &times; 1000 / (2&pi; &times; N_rated / 60)   [Nm]</pre>
+        <p class="card-note">From the nameplate power and speed. The same for star and delta: each connection puts the
+        rated voltage on the windings when it is on its base frequency.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Star / delta on the VFD (87 Hz delta)</h3>
+        <pre class="formula">f_base,star  = f_rated &times; (V/&radic;3) / V&Delta;
+f_base,delta = f_rated &times; V / V&Delta;
+               (50 &times; 400/230 &asymp; 87 Hz)
+
+factor(f) = 1             f &le; f_base
+          = f_base / f    f &gt; f_base
+
+T_conn(f) = T_rated &times; factor(f)
+P_conn(f) = T_conn(f) &times; 2&pi; N_motor(f) / 60</pre>
+        <p class="card-note">The VFD holds V/f at the nameplate ratio until its output reaches the supply voltage V.
+        Above that base frequency the motor field-weakens: torque falls as base/f and power stays at its value at
+        base. Delta reaches base at &radic;3 &times; the star frequency, so it delivers up to &radic;3 &times; rated
+        power at 87 Hz. No star-delta starting is modelled.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Drive torque &amp; force</h3>
+        <pre class="formula">T_drive = T_conn(f_std) &times; i &times; &eta;d   [Nm]
+
+F       = T_drive / (r / 1000)     [N]
+F[kgf]  = F[N] &times; 0.101972</pre>
+      </div>
+
+      <div class="result-card">
+        <h3>Conveyor geometry &amp; speed</h3>
+        <pre class="formula">C = 2 &times; &pi; &times; r / 1000        [m]
+
+v = C &times; N_drive,std           [m/min]
+
+cycles/min = (v / C) &times; 2</pre>
+      </div>
+
+      <div class="result-card">
+        <h3>Crop load &amp; throughput</h3>
+        <pre class="formula">m_crop     = h &times; L &times; w &times; &rho;    [kg]
+loading    = h &times; w &times; &rho;        [kg/m]
+feed       = loading &times; v      [kg/min]
+throughput = feed &times; 60 / 1000 [t/h]</pre>
+      </div>
+
+      <div class="result-card">
+        <h3>Running force &amp; payload</h3>
+        <pre class="formula">m_total = m_shaft + m_belt + m_crop
+
+F_friction = &mu; &times; cos&theta; &times; m_total   [kgf]
+F_lift     = sin&theta; &times; m_crop           [kgf]
+F_req      = F_friction + F_lift
+F[N]       = F[kgf] / 0.101972
+
+payload    = F[kgf] - F_req</pre>
+        <p class="card-note">Friction acts on the whole load resting on the bed. Only the crop is lifted:
+        the shaft is stationary and the belt's return run cancels its own lift. Negative &theta; (downhill)
+        makes the lift negative, reducing or reversing the required force.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Running torque, power &amp; safety factor</h3>
+        <pre class="formula">T_run = F_req[N] &times; (r/1000) / (i &times; &eta;d)   [Nm]
+P_run = T_run &times; 2&pi; N_motor,std / 60000      [kW]
+
+SF_run = F_conn[kgf] / F_req
+         at f_std, and at f_max</pre>
+        <p class="card-note">P_run is the power the conveyor absorbs at the motor shaft. SF is &infin; when the
+        load needs no driving force (downhill).</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Starting</h3>
+        <pre class="formula">a       = (v / 60) / t_acc               [m/s&sup2;]
+
+F_start = &mu;s &times; cos&theta; &times; m_total
+        + sin&theta; &times; m_crop
+        + m_total &times; a &times; 0.101972       [kgf]
+
+T_start = F_start[N] &times; (r/1000) / (i &times; &eta;d)
+
+T_avail  = T_rated &times; start% / 100
+SF_start = T_avail / T_start
+
+P_start = T_start / (start%/100) &times; 2&pi; N_rated / 60000</pre>
+        <p class="card-note">&mu;s is the breakaway (static) friction coefficient; start% is the torque the VFD allows
+        (typically 150%). The VFD starts below either base frequency, so star and delta have the same starting torque.
+        P_start is the smallest nameplate rating that can start the load. Rotating inertia is not included.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Sizing — gear ratio</h3>
+        <pre class="formula">N_drive,req = v_target / C          [rpm]
+
+i_exact = N_motor,std / N_drive,req
+i_std   = nearest of standard series
+  5, 7.5, 10, 12.5, 15, 20, 25, 30,
+  35, 40, 50, 60, 70, 80, 100</pre>
+      </div>
+
+      <div class="result-card">
+        <h3>Sizing — motor power</h3>
+        <pre class="formula">loading = (tph &times; 1000 / 60) / v_target  [kg/m]
+m_crop  = loading &times; L
+
+T_rated,conn = max( SF_target &times; T_run / factor_conn(f_std),
+                    T_start / (start% / 100) )
+
+P_conn = T_rated,conn &times; 2&pi; N_rated / 60000
+
+next standard IEC size up:
+  0.12, 0.18, 0.25, 0.37, 0.55, 0.75,
+  1.1, 1.5, 2.2, 3, 4, 5.5, 7.5,
+  11, 15, 18.5, 22 kW</pre>
+        <p class="card-note">T_run and T_start use the exact ratio. Up to the star base frequency both connections
+        need the same nameplate rating; above it star needs more, while 87 Hz delta does not.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>Sizing — check with standard picks</h3>
+        <pre class="formula">N_drive = N_motor,std / i_std
+v_actual = C &times; N_drive
+tph_actual = loading &times; v_actual &times; 60/1000
+
+speed error = (v_actual - v_target)
+              / v_target &times; 100%
+
+SF running and starting: forward equations
+re-run with i_std and the standard kW,
+keeping the same loading [kg/m]</pre>
+      </div>
+
+      <div class="result-card">
+        <h3>Motor current</h3>
+        <pre class="formula">I_star  = nameplate Y current
+I_delta = nameplate &Delta; current
+
+estimate when not entered:
+I_star  = P &times; 1000 / (&radic;3 &times; &radic;3V&Delta; &times; &eta; &times; pf)
+I_delta = &radic;3 &times; I_star
+
+overload setting = rated current
+for the chosen connection</pre>
+        <p class="card-note">&eta; from the IE3 minimum-efficiency table (IEC 60034-30-1, 50 Hz 4-pole) with
+        typical power factors, log-interpolated between sizes. In 87 Hz delta the VFD must supply I_delta.</p>
+      </div>
+
+      <div class="result-card">
+        <h3>IE3 table used (50 Hz, 4-pole)</h3>
+        <pre class="formula">kW      &eta;       pf        kW      &eta;       pf
+0.12    64.8%   0.65      2.2     86.7%   0.80
+0.18    69.9%   0.66      3       87.7%   0.81
+0.25    73.5%   0.68      4       88.6%   0.82
+0.37    77.3%   0.70      5.5     89.6%   0.83
+0.55    80.8%   0.72      7.5     90.4%   0.84
+0.75    82.5%   0.74      11      91.4%   0.85
+1.1     84.1%   0.76      15      92.1%   0.85
+1.5     85.3%   0.78      18.5    92.6%   0.86
+                          22      93.0%   0.86</pre>
+      </div>
+
+      <div class="result-card">
+        <h3>Input limits</h3>
+        <pre class="formula">frequency        5 – 400 Hz, min &le; std &le; max
+rated speed      0 &lt; N_rated &lt; 120 f_rated / p
+drive efficiency 0 &lt; &eta;d &le; 1
+inclination      -89&deg; to +89&deg;
+friction         &mu;, &mu;s &ge; 0
+rated currents   &ge; 0 (0 = estimate)
+all dimensions, masses, density,
+power, voltages, ratio, speed,
+accel time, start %, target SF &gt; 0</pre>
+        <p class="card-note">Applied per field as you type.</p>
+      </div>
+
+    </div>
+  </main>
+
+  <aside class="panel report-panel" aria-label="Plain-text report">
+    <h2>Report</h2>
+    <pre class="report-text" id="report-text"></pre>
+    <div class="panel-actions">
+      <button type="button" id="btn-copy-2" title="Copy the plain-text report to the clipboard">Copy report</button>
+      <button type="button" id="btn-download-2" title="Download the plain-text report">Download .txt</button>
+    </div>
+  </aside>
+
+  <footer class="status-bar" aria-label="Key figures">
+    <span class="status-set" id="status-forward">
+      <span>Conveyor <span class="sval" id="s-speed">—</span> m/min</span>
+      <span>Throughput <span class="sval" id="s-tph">—</span> t/h</span>
+      <span>SF run star/delta <span class="sval" id="s-sf-run">—</span></span>
+      <span>SF start <span class="sval" id="s-sf-start">—</span></span>
+    </span>
+    <span class="status-set" id="status-sizing" hidden>
+      <span>Ratio <span class="sval" id="s-ratio">—</span> : 1</span>
+      <span>Star <span class="sval" id="s-kw">—</span> kW / <span class="sval" id="s-fla-star">—</span> A</span>
+      <span>Delta <span class="sval" id="s-kw-delta">—</span> kW / <span class="sval" id="s-fla-delta">—</span> A</span>
+      <span>Actual speed <span class="sval" id="s-actual-speed">—</span> m/min</span>
+      <span>SF run/start star <span class="sval" id="s-actual-sf">—</span></span>
+    </span>
+<span class="status-set" id="status-reference" hidden>
+      <span>Formulas as implemented — ported from the SolidWorks macro, SI units, kgf via 1 N = 0.10197 kgf</span>
+    </span>
+    <span class="status-flag ok" id="s-flag">OK</span>
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   Calculation engine — direct port of SolidWorks_Motor_Calculator.bas
+   ===================================================================== */
+
+const MC_KG_PER_NEWTON_STANDARD = 0.101971621297793;
+const MC_SQRT3 = Math.sqrt(3);
+const SF_GOOD = 1.5;   /* safety factor at or above this is OK; 1.0–1.5 marginal */
+
+/* Standard gearbox ratios and IEC motor frame powers used for
+   the sizing recommendation. */
+const STD_RATIOS = [5, 7.5, 10, 12.5, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 100];
+const STD_KW = [0.12, 0.18, 0.25, 0.37, 0.55, 0.75, 1.1, 1.5, 2.2, 3, 4, 5.5, 7.5, 11, 15, 18.5, 22];
+
+/* IE3 minimum efficiency (IEC 60034-30-1, 50 Hz 4-pole) with typical
+   power factors, used to guesstimate full-load current for overload
+   sizing. Always verify against the actual motor nameplate. */
+const IE3_TABLE = [
+  { kw: 0.12, eff: 0.648, pf: 0.65 },
+  { kw: 0.18, eff: 0.699, pf: 0.66 },
+  { kw: 0.25, eff: 0.735, pf: 0.68 },
+  { kw: 0.37, eff: 0.773, pf: 0.70 },
+  { kw: 0.55, eff: 0.808, pf: 0.72 },
+  { kw: 0.75, eff: 0.825, pf: 0.74 },
+  { kw: 1.1,  eff: 0.841, pf: 0.76 },
+  { kw: 1.5,  eff: 0.853, pf: 0.78 },
+  { kw: 2.2,  eff: 0.867, pf: 0.80 },
+  { kw: 3,    eff: 0.877, pf: 0.81 },
+  { kw: 4,    eff: 0.886, pf: 0.82 },
+  { kw: 5.5,  eff: 0.896, pf: 0.83 },
+  { kw: 7.5,  eff: 0.904, pf: 0.84 },
+  { kw: 11,   eff: 0.914, pf: 0.85 },
+  { kw: 15,   eff: 0.921, pf: 0.85 },
+  { kw: 18.5, eff: 0.926, pf: 0.86 },
+  { kw: 22,   eff: 0.930, pf: 0.86 }
+];
+
+/* Typical IE3 efficiency and power factor for any kW rating,
+   log-interpolated between table sizes and clamped at the ends. */
+function ie3Estimate(kw) {
+  const t = IE3_TABLE;
+  if (kw <= t[0].kw) return { eff: t[0].eff, pf: t[0].pf };
+  if (kw >= t[t.length - 1].kw) return { eff: t[t.length - 1].eff, pf: t[t.length - 1].pf };
+  for (let n = 1; n < t.length; n++) {
+    if (kw <= t[n].kw) {
+      const a = t[n - 1], b = t[n];
+      const x = (Math.log(kw) - Math.log(a.kw)) / (Math.log(b.kw) - Math.log(a.kw));
+      return { eff: a.eff + x * (b.eff - a.eff), pf: a.pf + x * (b.pf - a.pf) };
+    }
+  }
+  return { eff: t[t.length - 1].eff, pf: t[t.length - 1].pf };
+}
+
+/* Estimated three-phase full-load current at rated output. */
+function flaAmps(kw, volts, eff, pf) {
+  return (kw * 1000) / (Math.sqrt(3) * volts * eff * pf);
+}
+
+const FORWARD_FIELDS = [
+  { key: "minHz",           label: "Minimum frequency",      unit: "Hz",    group: "VFD" },
+  { key: "stdHz",           label: "Standard frequency",     unit: "Hz",    group: "VFD" },
+  { key: "maxHz",           label: "Maximum frequency",      unit: "Hz",    group: "VFD" },
+  { key: "supplyV",         label: "Supply voltage",         unit: "V",     group: "VFD" },
+  { key: "motorKw",         label: "Rated power",            unit: "kW",    group: "Motor nameplate" },
+  { key: "poles",           label: "Poles",                  unit: "",      group: "Motor nameplate" },
+  { key: "ratedRpm",        label: "Rated speed",            unit: "rpm",   group: "Motor nameplate" },
+  { key: "ratedHz",         label: "Rated frequency",        unit: "Hz",    group: "Motor nameplate" },
+  { key: "ratedDeltaV",     label: "Rated Δ voltage",        unit: "V",     group: "Motor nameplate" },
+  { key: "ratedStarA",      label: "Rated current Y (0 = estimate)", unit: "A", group: "Motor nameplate" },
+  { key: "ratedDeltaA",     label: "Rated current Δ (0 = estimate)", unit: "A", group: "Motor nameplate" },
+  { key: "gearRatio",       label: "Gear ratio",             unit: ": 1",   group: "Drive" },
+  { key: "driveEfficiency", label: "Drive efficiency",       unit: "0–1",   group: "Drive" },
+  { key: "shaftRadiusMm",   label: "Shaft radius",           unit: "mm",    group: "Drive" },
+  { key: "cof",             label: "Running friction coefficient", unit: "", group: "Belt / load" },
+  { key: "shaftKg",         label: "Shaft mass",             unit: "kg",    group: "Belt / load" },
+  { key: "beltKg",          label: "Belt / load mass",       unit: "kg",    group: "Belt / load" },
+  { key: "cropDensity",     label: "Crop density",           unit: "kg/m³", group: "Crop" },
+  { key: "cropHeightM",     label: "Crop height / depth",    unit: "m",     group: "Crop" },
+  { key: "conveyorLengthM", label: "Conveyor length",        unit: "m",     group: "Crop" },
+  { key: "conveyorWidthM",  label: "Conveyor width",         unit: "m",     group: "Crop" },
+  { key: "inclinationDeg",  label: "Inclination angle",      unit: "deg",   group: "Incline" },
+  { key: "cofStatic",       label: "Breakaway friction coefficient", unit: "", group: "Starting" },
+  { key: "accelTimeS",      label: "Acceleration time",      unit: "s",     group: "Starting" },
+  { key: "startTorquePct",  label: "Starting torque available", unit: "% rated", group: "Starting" }
+];
+
+const SIZING_FIELDS = [
+  { key: "desiredSpeed",    label: "Desired belt speed",     unit: "m/min", group: "Targets" },
+  { key: "desiredTph",      label: "Desired throughput",     unit: "t/h",   group: "Targets" },
+  { key: "targetSf",        label: "Target safety factor (running)", unit: "", group: "Targets" },
+  { key: "stdHz",           label: "Standard frequency",     unit: "Hz",    group: "VFD" },
+  { key: "supplyV",         label: "Supply voltage",         unit: "V",     group: "VFD" },
+  { key: "poles",           label: "Poles",                  unit: "",      group: "Motor nameplate" },
+  { key: "ratedRpm",        label: "Rated speed",            unit: "rpm",   group: "Motor nameplate" },
+  { key: "ratedHz",         label: "Rated frequency",        unit: "Hz",    group: "Motor nameplate" },
+  { key: "ratedDeltaV",     label: "Rated Δ voltage",        unit: "V",     group: "Motor nameplate" },
+  { key: "driveEfficiency", label: "Drive efficiency",       unit: "0–1",   group: "Drive" },
+  { key: "shaftRadiusMm",   label: "Shaft radius",           unit: "mm",    group: "Drive" },
+  { key: "cof",             label: "Running friction coefficient", unit: "", group: "Belt / load" },
+  { key: "shaftKg",         label: "Shaft mass",             unit: "kg",    group: "Belt / load" },
+  { key: "beltKg",          label: "Belt / load mass",       unit: "kg",    group: "Belt / load" },
+  { key: "conveyorLengthM", label: "Conveyor length",        unit: "m",     group: "Belt / load" },
+  { key: "inclinationDeg",  label: "Inclination angle",      unit: "deg",   group: "Incline" },
+  { key: "cofStatic",       label: "Breakaway friction coefficient", unit: "", group: "Starting" },
+  { key: "accelTimeS",      label: "Acceleration time",      unit: "s",     group: "Starting" },
+  { key: "startTorquePct",  label: "Starting torque available", unit: "% rated", group: "Starting" }
+];
+
+function defaultForwardInputs() {
+  return {
+    minHz: 20, stdHz: 50, maxHz: 70, supplyV: 400,
+    motorKw: 0.37, poles: 4, ratedRpm: 1410, ratedHz: 50, ratedDeltaV: 230,
+    ratedStarA: 0, ratedDeltaA: 0,
+    gearRatio: 25, driveEfficiency: 0.86, shaftRadiusMm: 80,
+    cof: 0.3, shaftKg: 18, beltKg: 25,
+    cropDensity: 641, cropHeightM: 0.1,
+    conveyorLengthM: 6, conveyorWidthM: 0.6,
+    inclinationDeg: 0,
+    cofStatic: 0.4, accelTimeS: 2, startTorquePct: 150
+  };
+}
+
+function defaultSizingInputs() {
+  return {
+    desiredSpeed: 30, desiredTph: 65, targetSf: 1.5,
+    stdHz: 50, supplyV: 400,
+    poles: 4, ratedRpm: 1410, ratedHz: 50, ratedDeltaV: 230,
+    driveEfficiency: 0.86, shaftRadiusMm: 80,
+    cof: 0.3, shaftKg: 18, beltKg: 25,
+    conveyorLengthM: 6, inclinationDeg: 0,
+    cofStatic: 0.4, accelTimeS: 2, startTorquePct: 150
+  };
+}
+
+/* Rules shared by both tabs for the nameplate, supply and starting inputs. */
+function validateCommonInputs(i, add) {
+  if (i.poles <= 0) add("Motor poles must be greater than zero.", ["poles"]);
+  if (i.ratedHz < 5 || i.ratedHz > 400) add("Rated frequency must be between 5 and 400 Hz.", ["ratedHz"]);
+  if (i.ratedRpm <= 0) add("Rated speed must be greater than zero.", ["ratedRpm"]);
+  else if (i.poles > 0 && i.ratedRpm >= 120 * i.ratedHz / i.poles)
+    add("Rated speed must be below synchronous speed (" + fmt(120 * i.ratedHz / i.poles, 0) + " rpm).", ["ratedRpm"]);
+  if (i.supplyV <= 0) add("Supply voltage must be greater than zero.", ["supplyV"]);
+  if (i.ratedDeltaV <= 0) add("Rated delta voltage must be greater than zero.", ["ratedDeltaV"]);
+  if (i.cof < 0) add("Running friction coefficient cannot be negative.", ["cof"]);
+  if (i.cofStatic < 0) add("Breakaway friction coefficient cannot be negative.", ["cofStatic"]);
+  if (i.accelTimeS <= 0) add("Acceleration time must be greater than zero.", ["accelTimeS"]);
+  if (i.startTorquePct <= 0) add("Starting torque available must be greater than zero.", ["startTorquePct"]);
+  if (i.inclinationDeg < -89 || i.inclinationDeg > 89)
+    add("Inclination must be between -89 and 89 degrees.", ["inclinationDeg"]);
+}
+
+function validateForwardInputs(i) {
+  const issues = [];
+  const add = (message, keys) => issues.push({ message, keys });
+
+  if (i.minHz <= 0 || i.stdHz <= 0 || i.maxHz <= 0)
+    add("Frequencies must be greater than zero.", ["minHz", "stdHz", "maxHz"]);
+  else if (i.minHz > i.stdHz || i.stdHz > i.maxHz)
+    add("Frequency order should be Min ≤ Standard ≤ Max.", ["minHz", "stdHz", "maxHz"]);
+  else if (i.minHz < 5 || i.stdHz < 5 || i.maxHz < 5 || i.minHz > 400 || i.stdHz > 400 || i.maxHz > 400)
+    add("Frequencies must be between 5 and 400 Hz.", ["minHz", "stdHz", "maxHz"]);
+
+  if (i.gearRatio <= 0) add("Gear ratio must be greater than zero.", ["gearRatio"]);
+  if (i.shaftRadiusMm <= 0) add("Shaft radius must be greater than zero.", ["shaftRadiusMm"]);
+  if (i.motorKw <= 0) add("Rated power must be greater than zero.", ["motorKw"]);
+  if (i.ratedStarA < 0) add("Rated star current cannot be negative (0 = estimate).", ["ratedStarA"]);
+  if (i.ratedDeltaA < 0) add("Rated delta current cannot be negative (0 = estimate).", ["ratedDeltaA"]);
+
+  if (i.driveEfficiency <= 0 || i.driveEfficiency > 1)
+    add("Drive efficiency must be greater than 0 and no more than 1.", ["driveEfficiency"]);
+
+  if (i.cropDensity <= 0) add("Crop density must be greater than zero.", ["cropDensity"]);
+  if (i.cropHeightM <= 0) add("Crop height must be greater than zero.", ["cropHeightM"]);
+  if (i.conveyorLengthM <= 0) add("Conveyor length must be greater than zero.", ["conveyorLengthM"]);
+  if (i.conveyorWidthM <= 0) add("Conveyor width must be greater than zero.", ["conveyorWidthM"]);
+
+  validateCommonInputs(i, add);
+  return issues;
+}
+
+function validateSizingInputs(i) {
+  const issues = [];
+  const add = (message, keys) => issues.push({ message, keys });
+
+  if (i.desiredSpeed <= 0) add("Desired belt speed must be greater than zero.", ["desiredSpeed"]);
+  if (i.desiredTph <= 0) add("Desired throughput must be greater than zero.", ["desiredTph"]);
+  if (i.targetSf <= 0) add("Target safety factor must be greater than zero.", ["targetSf"]);
+
+  if (i.stdHz <= 0) add("Standard frequency must be greater than zero.", ["stdHz"]);
+  else if (i.stdHz < 5 || i.stdHz > 400) add("Frequencies must be between 5 and 400 Hz.", ["stdHz"]);
+
+  if (i.shaftRadiusMm <= 0) add("Shaft radius must be greater than zero.", ["shaftRadiusMm"]);
+  if (i.driveEfficiency <= 0 || i.driveEfficiency > 1)
+    add("Drive efficiency must be greater than 0 and no more than 1.", ["driveEfficiency"]);
+  if (i.conveyorLengthM <= 0) add("Conveyor length must be greater than zero.", ["conveyorLengthM"]);
+
+  validateCommonInputs(i, add);
+  return issues;
+}
+
+/* Nameplate slip at rated speed; motor speed at any VFD frequency keeps
+   the same fractional slip. */
+function ratedSlip(i) {
+  return 1 - i.ratedRpm / (120 * i.ratedHz / i.poles);
+}
+
+function motorRpmAt(i, hz) {
+  return ((hz * 120) / i.poles) * (1 - ratedSlip(i));
+}
+
+/* VFD operation from nameplate ratings. The drive holds V/f at the
+   nameplate ratio, so a connection gives rated torque up to its base
+   frequency (where the drive output reaches the supply voltage) and
+   field-weakens above it: torque × base/f, power constant. Star puts
+   V/√3 on each winding, so its base is about the rated frequency; delta
+   puts V on each winding, so a 230Δ motor on 400 V reaches base at
+   50 × 400/230 ≈ 87 Hz (the 87 Hz characteristic). */
+function connectionBases(i) {
+  return {
+    baseHzStar: i.ratedHz * (i.supplyV / MC_SQRT3) / i.ratedDeltaV,
+    baseHzDelta: i.ratedHz * i.supplyV / i.ratedDeltaV
+  };
+}
+
+function torqueFactorAt(hz, baseHz) {
+  return hz <= baseHz ? 1 : baseHz / hz;
+}
+
+/* Nameplate rated currents, or IE3 estimates where not entered (0). */
+function ratedCurrents(i, kw, starA, deltaA) {
+  const e = ie3Estimate(kw);
+  const c = { effEst: e.eff, pfEst: e.pf, estimated: !(starA > 0) && !(deltaA > 0) };
+  const starEst = flaAmps(kw, MC_SQRT3 * i.ratedDeltaV, e.eff, e.pf);
+  c.starA = starA > 0 ? starA : (deltaA > 0 ? deltaA / MC_SQRT3 : starEst);
+  c.deltaA = deltaA > 0 ? deltaA : c.starA * MC_SQRT3;
+  return c;
+}
+
+/* Force to break the load away and accelerate it to belt speed:
+   static friction on the whole bed load, crop lift, and m·a on the moving mass. */
+function startingForces(i, movingMassKg, cropTotalKg, speedMpm) {
+  const inclineRad = i.inclinationDeg * Math.PI / 180;
+  const s = {};
+  s.accelMs2 = (speedMpm / 60) / i.accelTimeS;
+  s.breakawayKg = i.cofStatic * Math.cos(inclineRad) * movingMassKg;
+  s.liftKg = Math.sin(inclineRad) * cropTotalKg;
+  s.accelKg = movingMassKg * s.accelMs2 * MC_KG_PER_NEWTON_STANDARD;
+  s.totalKg = s.breakawayKg + s.liftKg + s.accelKg;
+  s.totalN = s.totalKg / MC_KG_PER_NEWTON_STANDARD;
+  return s;
+}
+
+/* Safety factor = available ÷ required. Nothing required (gravity-driven) → ∞. */
+function safetyFactor(available, required) {
+  return required <= 0 ? Infinity : available / required;
+}
+
+function calculateMotor(i) {
+  const r = {};
+  const inclineRad = i.inclinationDeg * Math.PI / 180;
+  const shaftRadiusM = i.shaftRadiusMm / 1000;
+  const omegaOf = (rpm) => 2 * Math.PI * rpm / 60;
+
+  r.slipPct = ratedSlip(i) * 100;
+  r.motorRpmMin = motorRpmAt(i, i.minHz);
+  r.motorRpmStd = motorRpmAt(i, i.stdHz);
+  r.motorRpmMax = motorRpmAt(i, i.maxHz);
+
+  r.driveRpmMin = r.motorRpmMin / i.gearRatio;
+  r.driveRpmStd = r.motorRpmStd / i.gearRatio;
+  r.driveRpmMax = r.motorRpmMax / i.gearRatio;
+
+  /* Rated torque from the nameplate power and speed — the same for both
+     connections. Available torque and power then follow each connection's
+     VFD characteristic. */
+  r.motorTorqueNm = (i.motorKw * 1000) / omegaOf(i.ratedRpm);
+  Object.assign(r, connectionBases(i));
+  const tf = (hz, base) => torqueFactorAt(hz, base);
+  const powerKw = (hz, base) => r.motorTorqueNm * tf(hz, base) * omegaOf(motorRpmAt(i, hz)) / 1000;
+  r.tfStarStd = tf(i.stdHz, r.baseHzStar);
+  r.tfDeltaStd = tf(i.stdHz, r.baseHzDelta);
+  r.tfStarMax = tf(i.maxHz, r.baseHzStar);
+  r.tfDeltaMax = tf(i.maxHz, r.baseHzDelta);
+  r.motorTorqueStarNm = r.motorTorqueNm * r.tfStarStd;
+  r.motorTorqueDeltaNm = r.motorTorqueNm * r.tfDeltaStd;
+  r.motorTorqueStarMaxNm = r.motorTorqueNm * r.tfStarMax;
+  r.motorTorqueDeltaMaxNm = r.motorTorqueNm * r.tfDeltaMax;
+  r.powerStarKw = [i.minHz, i.stdHz, i.maxHz].map(hz => powerKw(hz, r.baseHzStar));
+  r.powerDeltaKw = [i.minHz, i.stdHz, i.maxHz].map(hz => powerKw(hz, r.baseHzDelta));
+
+  const forceKgFor = (motorNm) => motorNm * i.gearRatio * i.driveEfficiency / shaftRadiusM * MC_KG_PER_NEWTON_STANDARD;
+  r.driveTorqueStarNm = r.motorTorqueStarNm * i.gearRatio * i.driveEfficiency;
+  r.driveTorqueDeltaNm = r.motorTorqueDeltaNm * i.gearRatio * i.driveEfficiency;
+  r.forceStarN = r.driveTorqueStarNm / shaftRadiusM;
+  r.forceDeltaN = r.driveTorqueDeltaNm / shaftRadiusM;
+  r.forceStarKg = r.forceStarN * MC_KG_PER_NEWTON_STANDARD;
+  r.forceDeltaKg = r.forceDeltaN * MC_KG_PER_NEWTON_STANDARD;
+
+  r.circumferenceM = (i.shaftRadiusMm * 2) * Math.PI / 1000;
+  r.metresPerMin = r.circumferenceM * r.driveRpmStd;
+  r.cyclesPerMin = (r.metresPerMin / r.circumferenceM) * 2;
+
+  r.cropTotalKg = i.cropHeightM * i.conveyorLengthM * i.conveyorWidthM * i.cropDensity;
+  r.cropKgPerM = i.cropHeightM * i.conveyorWidthM * i.cropDensity;
+  r.cropKgPerMin = r.cropKgPerM * r.metresPerMin;
+  r.tonnesPerHour = (r.cropKgPerMin / 1000) * 60;
+
+  /* Running: friction acts on the whole normal load on the bed; only the
+     crop is lifted (the shaft is stationary and the belt loop's return run
+     cancels its own lift). Lift is negative downhill. */
+  const movingMassKg = i.shaftKg + i.beltKg + r.cropTotalKg;
+  r.frictionKg = i.cof * Math.cos(inclineRad) * movingMassKg;
+  r.liftKg = Math.sin(inclineRad) * r.cropTotalKg;
+  r.inclineRequiredKg = r.frictionKg + r.liftKg;
+  r.frictionN = r.frictionKg / MC_KG_PER_NEWTON_STANDARD;
+  r.liftN = r.liftKg / MC_KG_PER_NEWTON_STANDARD;
+  r.inclineRequiredN = r.inclineRequiredKg / MC_KG_PER_NEWTON_STANDARD;
+  r.availablePayloadStarKg = r.forceStarKg - r.inclineRequiredKg;
+  r.availablePayloadDeltaKg = r.forceDeltaKg - r.inclineRequiredKg;
+
+  /* Force at the drive shaft → torque the motor must supply. */
+  const motorNmFor = (forceN) => Math.max(forceN, 0) * shaftRadiusM / (i.gearRatio * i.driveEfficiency);
+
+  r.runTorqueNm = motorNmFor(r.inclineRequiredN);
+  r.runPowerKw = r.runTorqueNm * omegaOf(r.motorRpmStd) / 1000;
+  r.sfRunStar = safetyFactor(r.forceStarKg, r.inclineRequiredKg);
+  r.sfRunDelta = safetyFactor(r.forceDeltaKg, r.inclineRequiredKg);
+  r.sfRunStarMax = safetyFactor(forceKgFor(r.motorTorqueStarMaxNm), r.inclineRequiredKg);
+  r.sfRunDeltaMax = safetyFactor(forceKgFor(r.motorTorqueDeltaMaxNm), r.inclineRequiredKg);
+
+  /* Starting: breakaway + lift + acceleration. The VFD starts at low
+     frequency (below either base), so both connections have the same
+     starting torque: start% of rated. */
+  const st = startingForces(i, movingMassKg, r.cropTotalKg, r.metresPerMin);
+  r.accelMs2 = st.accelMs2;
+  r.startBreakawayKg = st.breakawayKg;
+  r.startLiftKg = st.liftKg;
+  r.startAccelKg = st.accelKg;
+  r.startForceKg = st.totalKg;
+  r.startForceN = st.totalN;
+  r.startTorqueNm = motorNmFor(st.totalN);
+  r.startTorqueAvailNm = r.motorTorqueNm * (i.startTorquePct / 100);
+  r.sfStart = safetyFactor(r.startTorqueAvailNm, r.startTorqueNm);
+  /* Smallest nameplate rating whose starting torque covers the requirement. */
+  r.startPowerKw = r.startTorqueNm / (i.startTorquePct / 100) * omegaOf(i.ratedRpm) / 1000;
+
+  Object.assign(r, ratedCurrents(i, i.motorKw, i.ratedStarA, i.ratedDeltaA));
+  return r;
+}
+
+/* Reverse of the forward model: from desired belt speed and throughput,
+   derive the gear ratio and the nameplate motor power for each connection
+   that meets both the running safety factor and the starting requirement,
+   then check nearest standard picks. */
+function calculateSizing(i) {
+  const r = {};
+  const inclineRad = i.inclinationDeg * Math.PI / 180;
+  const shaftRadiusM = i.shaftRadiusMm / 1000;
+  const startFrac = i.startTorquePct / 100;
+  const ratedOmega = 2 * Math.PI * i.ratedRpm / 60;
+
+  r.motorRpmStd = motorRpmAt(i, i.stdHz);
+  const omega = 2 * Math.PI * r.motorRpmStd / 60;
+  r.circumferenceM = (i.shaftRadiusMm * 2) * Math.PI / 1000;
+  Object.assign(r, connectionBases(i));
+  r.tfStarStd = torqueFactorAt(i.stdHz, r.baseHzStar);
+  r.tfDeltaStd = torqueFactorAt(i.stdHz, r.baseHzDelta);
+
+  r.driveRpmRequired = i.desiredSpeed / r.circumferenceM;
+  r.ratioExact = r.motorRpmStd / r.driveRpmRequired;
+  r.ratioStd = STD_RATIOS.reduce((best, x) =>
+    Math.abs(x - r.ratioExact) < Math.abs(best - r.ratioExact) ? x : best, STD_RATIOS[0]);
+
+  r.cropKgPerM = (i.desiredTph * 1000 / 60) / i.desiredSpeed;
+  r.cropTotalKg = r.cropKgPerM * i.conveyorLengthM;
+
+  const movingMassKg = i.shaftKg + i.beltKg + r.cropTotalKg;
+  r.frictionKg = i.cof * Math.cos(inclineRad) * movingMassKg;
+  r.liftKg = Math.sin(inclineRad) * r.cropTotalKg;
+  r.inclineRequiredKg = r.frictionKg + r.liftKg;
+
+  const st = startingForces(i, movingMassKg, r.cropTotalKg, i.desiredSpeed);
+  r.accelMs2 = st.accelMs2;
+  r.startBreakawayKg = st.breakawayKg;
+  r.startAccelKg = st.accelKg;
+  r.startForceKg = st.totalKg;
+
+  const motorNmFor = (forceKg, ratio) =>
+    Math.max(forceKg, 0) / MC_KG_PER_NEWTON_STANDARD * shaftRadiusM / (ratio * i.driveEfficiency);
+
+  r.runTorqueNm = motorNmFor(r.inclineRequiredKg, r.ratioExact);
+  r.runPowerKw = r.runTorqueNm * omega / 1000;
+  r.startTorqueNm = motorNmFor(r.startForceKg, r.ratioExact);
+
+  /* Nameplate torque each connection needs: running at the standard
+     frequency (divided by that connection's torque factor there) or
+     starting, whichever is larger. */
+  r.ratedTorqueForStartNm = r.startTorqueNm / startFrac;
+  const ratedFor = (tfStd) => {
+    const run = i.targetSf * r.runTorqueNm / tfStd;
+    return { nm: Math.max(run, r.ratedTorqueForStartNm), governs: r.ratedTorqueForStartNm > run ? "starting" : "running", run };
+  };
+  const star = ratedFor(r.tfStarStd);
+  const delta = ratedFor(r.tfDeltaStd);
+  r.ratedTorqueForRunStarNm = star.run;
+  r.ratedTorqueForRunDeltaNm = delta.run;
+  r.governsStar = star.governs;
+  r.governsDelta = delta.governs;
+  r.gravityAssisted = star.nm <= 0;
+
+  r.kwForRunStar = star.run * ratedOmega / 1000;
+  r.kwForRunDelta = delta.run * ratedOmega / 1000;
+  r.kwForStart = r.ratedTorqueForStartNm * ratedOmega / 1000;
+  r.kwRequired = star.nm * ratedOmega / 1000;
+  r.kwStd = STD_KW.find(x => x >= r.kwRequired) || STD_KW[STD_KW.length - 1];
+  r.kwStdSufficient = r.kwStd >= r.kwRequired;
+  r.kwRequiredDelta = delta.nm * ratedOmega / 1000;
+  r.kwStdDelta = STD_KW.find(x => x >= r.kwRequiredDelta) || STD_KW[STD_KW.length - 1];
+  r.kwStdDeltaSufficient = r.kwStdDelta >= r.kwRequiredDelta;
+
+  /* IE3 estimated rated currents for each pick (no nameplate yet). */
+  const cStar = ratedCurrents(i, r.kwStd, 0, 0);
+  r.effStar = cStar.effEst;
+  r.pfStar = cStar.pfEst;
+  r.flaStarA = cStar.starA;
+  const cDelta = ratedCurrents(i, r.kwStdDelta, 0, 0);
+  r.effDelta = cDelta.effEst;
+  r.pfDelta = cDelta.pfEst;
+  r.flaDeltaA = cDelta.deltaA;
+
+  /* Verify what the standard ratio + standard motors actually deliver,
+     keeping the same crop loading (kg/m). Same maths as calculateMotor. */
+  r.actualDriveRpm = r.motorRpmStd / r.ratioStd;
+  r.actualSpeed = r.circumferenceM * r.actualDriveRpm;
+  r.actualTph = (r.cropKgPerM * r.actualSpeed / 1000) * 60;
+  r.speedErrPct = (r.actualSpeed - i.desiredSpeed) / i.desiredSpeed * 100;
+
+  const ratedNmFor = (kw) => (kw * 1000) / ratedOmega;
+  const forceKgFor = (kw, tfStd) =>
+    (ratedNmFor(kw) * tfStd * r.ratioStd * i.driveEfficiency / shaftRadiusM) * MC_KG_PER_NEWTON_STANDARD;
+  const startNeedNm = motorNmFor(startingForces(i, movingMassKg, r.cropTotalKg, r.actualSpeed).totalKg, r.ratioStd);
+  r.actualSfRunStar = safetyFactor(forceKgFor(r.kwStd, r.tfStarStd), r.inclineRequiredKg);
+  r.actualSfRunDelta = safetyFactor(forceKgFor(r.kwStdDelta, r.tfDeltaStd), r.inclineRequiredKg);
+  r.actualSfStartStar = safetyFactor(ratedNmFor(r.kwStd) * startFrac, startNeedNm);
+  r.actualSfStartDelta = safetyFactor(ratedNmFor(r.kwStdDelta) * startFrac, startNeedNm);
+
+  return r;
+}
+
+function fmt(value, places) {
+  return value.toFixed(places);
+}
+
+/* Safety factors print as ∞ when nothing is required (gravity-driven). */
+function fmtSf(sf) {
+  return isFinite(sf) ? fmt(sf, 2) : "∞";
+}
+
+function buildForwardReport(i, r) {
+  const kw3 = (a) => a.map(x => fmt(x, 3)).join(" / ");
+  return [
+    "MOTOR / CONVEYOR CALCULATOR",
+    "-".repeat(34),
+    "Nameplate: " + i.motorKw + " kW, " + i.ratedRpm + " rpm @ " + i.ratedHz + " Hz, " + i.ratedDeltaV + " V delta / " +
+      fmt(MC_SQRT3 * i.ratedDeltaV, 0) + " V star (slip " + fmt(r.slipPct, 2) + "%)",
+    "Motor RPM min/std/max: " + fmt(r.motorRpmMin, 2) + " / " + fmt(r.motorRpmStd, 2) + " / " + fmt(r.motorRpmMax, 2),
+    "Drive RPM min/std/max: " + fmt(r.driveRpmMin, 3) + " / " + fmt(r.driveRpmStd, 3) + " / " + fmt(r.driveRpmMax, 3),
+    "Motor rated torque: " + fmt(r.motorTorqueNm, 3) + " Nm (star and delta)",
+    "VFD base frequency star/delta (87 Hz delta): " + fmt(r.baseHzStar, 1) + " / " + fmt(r.baseHzDelta, 1) + " Hz",
+    "Motor torque star/delta @ " + i.stdHz + " Hz: " + fmt(r.motorTorqueStarNm, 3) + " / " + fmt(r.motorTorqueDeltaNm, 3) + " Nm",
+    "Motor torque star/delta @ " + i.maxHz + " Hz: " + fmt(r.motorTorqueStarMaxNm, 3) + " / " + fmt(r.motorTorqueDeltaMaxNm, 3) + " Nm",
+    "Power available star min/std/max: " + kw3(r.powerStarKw) + " kW",
+    "Power available delta min/std/max: " + kw3(r.powerDeltaKw) + " kW",
+    "Drive torque star/delta: " + fmt(r.driveTorqueStarNm, 3) + " / " + fmt(r.driveTorqueDeltaNm, 3) + " Nm",
+    "Drive force star: " + fmt(r.forceStarN, 1) + " N = " + fmt(r.forceStarKg, 2) + " kgf",
+    "Drive force delta: " + fmt(r.forceDeltaN, 1) + " N = " + fmt(r.forceDeltaKg, 2) + " kgf",
+    "Shaft circumference: " + fmt(r.circumferenceM, 4) + " m",
+    "Conveyor speed: " + fmt(r.metresPerMin, 4) + " m/min",
+    "Cycles per minute: " + fmt(r.cyclesPerMin, 3),
+    "Crop total on conveyor: " + fmt(r.cropTotalKg, 2) + " kg",
+    "Crop loading: " + fmt(r.cropKgPerM, 2) + " kg/m",
+    "Crop throughput: " + fmt(r.cropKgPerMin, 2) + " kg/min = " + fmt(r.tonnesPerHour, 3) + " tph",
+    "",
+    "RUNNING",
+    "Friction (running) force: " + fmt(r.frictionN, 1) + " N = " + fmt(r.frictionKg, 2) + " kgf",
+    "Lift force (crop at " + fmt(i.inclinationDeg, 2) + " deg): " + fmt(r.liftN, 1) + " N = " + fmt(r.liftKg, 2) + " kgf",
+    "Total required force: " + fmt(r.inclineRequiredN, 1) + " N = " + fmt(r.inclineRequiredKg, 2) + " kgf",
+    "Required motor torque (running): " + fmt(r.runTorqueNm, 3) + " Nm",
+    "Absorbed power (running): " + fmt(r.runPowerKw, 3) + " kW",
+    "Available payload after required force star/delta: " + fmt(r.availablePayloadStarKg, 2) + " / " + fmt(r.availablePayloadDeltaKg, 2) + " kgf",
+    "Safety factor running star/delta @ " + i.stdHz + " Hz: " + fmtSf(r.sfRunStar) + " / " + fmtSf(r.sfRunDelta),
+    "Safety factor running star/delta @ " + i.maxHz + " Hz: " + fmtSf(r.sfRunStarMax) + " / " + fmtSf(r.sfRunDeltaMax),
+    "",
+    "STARTING (" + fmt(i.startTorquePct, 0) + "% of rated torque, both connections)",
+    "Breakaway friction force: " + fmt(r.startBreakawayKg, 2) + " kgf",
+    "Lift force: " + fmt(r.startLiftKg, 2) + " kgf",
+    "Acceleration force (" + fmt(r.accelMs2, 4) + " m/s2 over " + fmt(i.accelTimeS, 2) + " s): " + fmt(r.startAccelKg, 2) + " kgf",
+    "Total starting force: " + fmt(r.startForceN, 1) + " N = " + fmt(r.startForceKg, 2) + " kgf",
+    "Required motor torque (starting): " + fmt(r.startTorqueNm, 3) + " Nm",
+    "Available starting torque: " + fmt(r.startTorqueAvailNm, 3) + " Nm",
+    "Safety factor starting: " + fmtSf(r.sfStart),
+    "Motor rating needed to start: " + fmt(r.startPowerKw, 3) + " kW",
+    "Safety factor bands: >= 1.5 OK, 1.0-1.5 marginal, < 1.0 cannot drive the load",
+    "",
+    "MOTOR CURRENT (" + (r.estimated ? "IE3 estimate, eff " + fmt(r.effEst * 100, 1) + "%, pf " + fmt(r.pfEst, 2) : "nameplate") + ")",
+    "Rated current star: " + fmt(r.starA, 2) + " A @ " + fmt(MC_SQRT3 * i.ratedDeltaV, 0) + " V",
+    "Rated current delta: " + fmt(r.deltaA, 2) + " A @ " + i.ratedDeltaV + " V (VFD must supply this in 87 Hz delta)",
+    "Overload setting = rated current of the chosen connection.",
+    "",
+    "Inputs: " + i.minHz + "/" + i.stdHz + "/" + i.maxHz + " Hz on " + i.supplyV + " V, " + i.poles + " poles" +
+      ", ratio " + i.gearRatio + ", efficiency " + i.driveEfficiency + ", incline " + fmt(i.inclinationDeg, 2) + " deg" +
+      ", mu " + i.cof + " running / " + i.cofStatic + " breakaway, accel " + i.accelTimeS + " s"
+  ].join("\n");
+}
+
+function buildSizingReport(i, r) {
+  const lines = [
+    "MOTOR / CONVEYOR SIZING",
+    "-".repeat(34),
+    "Target: " + fmt(i.desiredSpeed, 2) + " m/min, " + fmt(i.desiredTph, 2) + " tph, running safety factor " + fmt(i.targetSf, 2),
+    "",
+    "RECOMMENDED: gearbox ratio " + r.ratioStd + ":1",
+    "  Star running:  " + fmt(r.kwStd, 2) + " kW (sized by " + r.governsStar + "), rated " + fmt(r.flaStarA, 2) + " A",
+    "  Delta running (87 Hz): " + fmt(r.kwStdDelta, 2) + " kW (sized by " + r.governsDelta + "), rated " + fmt(r.flaDeltaA, 2) + " A",
+    "",
+    "Motor RPM standard: " + fmt(r.motorRpmStd, 2),
+    "Required drive RPM: " + fmt(r.driveRpmRequired, 3),
+    "Exact ratio required: " + fmt(r.ratioExact, 2) + ":1 (nearest standard " + r.ratioStd + ":1)",
+    "Shaft circumference: " + fmt(r.circumferenceM, 4) + " m",
+    "VFD base frequency star/delta: " + fmt(r.baseHzStar, 1) + " / " + fmt(r.baseHzDelta, 1) + " Hz",
+    "Torque factor star/delta @ " + i.stdHz + " Hz: " + fmt(r.tfStarStd, 3) + " / " + fmt(r.tfDeltaStd, 3),
+    "Implied crop loading: " + fmt(r.cropKgPerM, 2) + " kg/m",
+    "Crop total on conveyor: " + fmt(r.cropTotalKg, 2) + " kg",
+    "",
+    "RUNNING",
+    "Friction (running) force: " + fmt(r.frictionKg, 2) + " kgf",
+    "Lift force (crop at " + fmt(i.inclinationDeg, 2) + " deg): " + fmt(r.liftKg, 2) + " kgf",
+    "Total required force: " + fmt(r.inclineRequiredKg, 2) + " kgf",
+    "Required motor torque (running): " + fmt(r.runTorqueNm, 3) + " Nm",
+    "Absorbed power (running): " + fmt(r.runPowerKw, 3) + " kW",
+    "Rating for SF " + fmt(i.targetSf, 2) + " star/delta: " + fmt(r.kwForRunStar, 3) + " / " + fmt(r.kwForRunDelta, 3) + " kW",
+    "",
+    "STARTING (" + fmt(i.startTorquePct, 0) + "% of rated torque, both connections)",
+    "Breakaway friction force: " + fmt(r.startBreakawayKg, 2) + " kgf",
+    "Acceleration force (" + fmt(r.accelMs2, 4) + " m/s2 over " + fmt(i.accelTimeS, 2) + " s): " + fmt(r.startAccelKg, 2) + " kgf",
+    "Total starting force: " + fmt(r.startForceKg, 2) + " kgf",
+    "Required motor torque (starting): " + fmt(r.startTorqueNm, 3) + " Nm",
+    "Rating to start: " + fmt(r.kwForStart, 3) + " kW",
+    "",
+    "Motor power needed star: " + fmt(r.kwRequired, 3) + " kW (next standard " + fmt(r.kwStd, 2) + " kW)",
+    "Motor power needed delta: " + fmt(r.kwRequiredDelta, 3) + " kW (next standard " + fmt(r.kwStdDelta, 2) + " kW)",
+    "",
+    "IE3 ESTIMATE (typical values — verify against nameplate)",
+    "Star motor " + fmt(r.kwStd, 2) + " kW: eff " + fmt(r.effStar * 100, 1) + "%, pf " + fmt(r.pfStar, 2) +
+      ", rated star current " + fmt(r.flaStarA, 2) + " A (overload setting)",
+    "Delta motor " + fmt(r.kwStdDelta, 2) + " kW: eff " + fmt(r.effDelta * 100, 1) + "%, pf " + fmt(r.pfDelta, 2) +
+      ", rated delta current " + fmt(r.flaDeltaA, 2) + " A (overload setting; VFD must supply it)",
+    "",
+    "CHECK WITH STANDARD PICKS (ratio " + r.ratioStd + ":1)",
+    "Actual belt speed: " + fmt(r.actualSpeed, 2) + " m/min (" + (r.speedErrPct >= 0 ? "+" : "") + fmt(r.speedErrPct, 1) + "% vs target)",
+    "Actual throughput: " + fmt(r.actualTph, 2) + " tph",
+    "Safety factor star (" + fmt(r.kwStd, 2) + " kW): running " + fmtSf(r.actualSfRunStar) + ", starting " + fmtSf(r.actualSfStartStar),
+    "Safety factor delta (" + fmt(r.kwStdDelta, 2) + " kW): running " + fmtSf(r.actualSfRunDelta) + ", starting " + fmtSf(r.actualSfStartDelta),
+    "",
+    "Inputs: " + i.stdHz + " Hz on " + i.supplyV + " V, " + i.poles + " poles, rated " + i.ratedRpm + " rpm @ " + i.ratedHz + " Hz" +
+      ", " + i.ratedDeltaV + " V delta, efficiency " + i.driveEfficiency + ", shaft radius " + i.shaftRadiusMm + " mm" +
+      ", mu " + i.cof + " running / " + i.cofStatic + " breakaway, shaft " + i.shaftKg + " kg, belt " + i.beltKg + " kg" +
+      ", length " + i.conveyorLengthM + " m, incline " + fmt(i.inclinationDeg, 2) + " deg" +
+      ", accel " + i.accelTimeS + " s, start torque " + i.startTorquePct + "%"
+  ];
+  if (r.gravityAssisted) {
+    lines.splice(4, 0, "NOTE: load is zero or assists (downhill) — minimum motor size governs.");
+  }
+  return lines.join("\n");
+}
+
+/* =====================================================================
+   UI wiring
+   ===================================================================== */
+
+const banner = document.getElementById("validation-banner");
+const reportText = document.getElementById("report-text");
+const statusFlag = document.getElementById("s-flag");
+const fileInput = document.getElementById("inputs-file-input");
+
+let activeTab = "forward";
+const reports = { forward: "", sizing: "", reference: [
+  "MOTOR / CONVEYOR CALCULATOR — FORMULAS",
+  "-".repeat(42),
+  "Constants: 1 N = 0.101971621297793 kgf (g = 9.80665 m/s2); sqrt(3) = 1.7320508",
+  "Safety factor bands: >= 1.5 OK, 1.0-1.5 marginal, < 1.0 cannot drive the load",
+  "",
+  "MOTOR & DRIVE SPEED",
+  "  s = 1 - N_rated / (120 f_rated / p)  (nameplate slip)",
+  "  N_motor = (f x 120 / p) x (1 - s)  [rpm], at f_min / f_std / f_max",
+  "  N_drive = N_motor / i",
+  "",
+  "MOTOR RATED TORQUE (nameplate, star and delta)",
+  "  T_rated = P x 1000 / (2 pi N_rated / 60)  [Nm]",
+  "",
+  "STAR / DELTA ON THE VFD (87 Hz DELTA)",
+  "  f_base,star = f_rated x (V/sqrt(3)) / V_delta;  f_base,delta = f_rated x V / V_delta  (50 x 400/230 = 87 Hz)",
+  "  factor(f) = 1 for f <= f_base, else f_base / f  (field weakening, constant power)",
+  "  T_conn(f) = T_rated x factor(f);  P_conn(f) = T_conn(f) x 2 pi N_motor(f) / 60",
+  "  No star-delta starting is modelled.",
+  "",
+  "DRIVE TORQUE & FORCE",
+  "  T_drive = T_conn(f_std) x i x eta_d;  F = T_drive / (r/1000)  [N];  F[kgf] = F[N] x 0.101972",
+  "",
+  "CONVEYOR",
+  "  C = 2 pi r / 1000  [m];  v = C x N_drive,std  [m/min];  cycles/min = 2v/C",
+  "",
+  "CROP",
+  "  m_crop = h L w rho  [kg];  loading = h w rho  [kg/m]",
+  "  feed = loading x v  [kg/min];  throughput = feed x 60/1000  [t/h]",
+  "",
+  "RUNNING",
+  "  F_friction = mu cos(theta) x (m_shaft + m_belt + m_crop)  [kgf]",
+  "  F_lift = sin(theta) x m_crop  [kgf]  (only the crop is lifted)",
+  "  F_req = F_friction + F_lift;  payload = F[kgf] - F_req",
+  "  T_run = F_req[N] x (r/1000) / (i x eta_d);  P_run = T_run x 2 pi N_motor,std / 60000  [kW]",
+  "  SF_run = F_conn[kgf] / F_req  (at f_std and f_max)",
+  "",
+  "STARTING (same for star and delta: the VFD starts below either base frequency)",
+  "  a = (v/60) / t_acc  [m/s2]",
+  "  F_start = mu_s cos(theta) m_total + sin(theta) m_crop + m_total x a x 0.101972  [kgf]",
+  "  T_start = F_start[N] x (r/1000) / (i x eta_d)",
+  "  T_avail = T_rated x start%/100;  SF_start = T_avail / T_start",
+  "  P_start = T_start / (start%/100) x 2 pi N_rated / 60000  [kW]  (smallest motor that starts the load)",
+  "",
+  "SIZING (REVERSE)",
+  "  N_drive,req = v_target / C;  i_exact = N_motor,std / N_drive,req",
+  "  i_std = nearest of 5, 7.5, 10, 12.5, 15, 20, 25, 30, 35, 40, 50, 60, 70, 80, 100",
+  "  loading = (tph x 1000/60) / v_target;  m_crop = loading x L",
+  "  T_rated,conn = max(SF_target x T_run / factor_conn(f_std), T_start / (start%/100))",
+  "  P_conn = T_rated,conn x 2 pi N_rated / 60000;  next standard IEC size: 0.12 ... 22 kW",
+  "  check: forward equations re-run with i_std and standard kW at same loading",
+  "",
+  "MOTOR CURRENT",
+  "  nameplate Y and delta currents; overload setting = rated current of the chosen connection",
+  "  estimate when not entered: I_star = P x 1000 / (sqrt(3) x sqrt(3) V_delta x eta x pf);  I_delta = sqrt(3) x I_star",
+  "  eta/pf: IE3 table (IEC 60034-30-1, 50 Hz 4-pole), log-interpolated:",
+  "  " + IE3_TABLE.map(t => t.kw + " kW " + (t.eff * 100).toFixed(1) + "% " + t.pf.toFixed(2)).join("; "),
+  "  In 87 Hz delta the VFD must supply the delta current.",
+  "",
+  "LIMITS",
+  "  frequency 5-400 Hz (min <= std <= max); 0 < N_rated < 120 f_rated / p; 0 < eta_d <= 1",
+  "  incline -89 to +89 deg; mu, mu_s >= 0; rated currents >= 0 (0 = estimate)",
+  "  dimensions/masses/density/power/voltages, accel time, start %, target SF > 0"
+].join("\n") };
+
+const TABS = {
+  forward: {
+    fields: FORWARD_FIELDS,
+    form: document.getElementById("form-forward"),
+    defaults: defaultForwardInputs,
+    validate: validateForwardInputs
+  },
+  sizing: {
+    fields: SIZING_FIELDS,
+    form: document.getElementById("form-sizing"),
+    defaults: defaultSizingInputs,
+    validate: validateSizingInputs
+  }
+};
+
+/* Build both input forms, grouped like the properties panel in the simulator. */
+for (const [tab, cfg] of Object.entries(TABS)) {
+  let currentGroup = null;
+  for (const f of cfg.fields) {
+    if (f.group !== currentGroup) {
+      currentGroup = f.group;
+      const h = document.createElement("h3");
+      h.className = "property-section";
+      h.textContent = f.group;
+      cfg.form.appendChild(h);
+    }
+    const wrap = document.createElement("div");
+    wrap.className = "field";
+    wrap.id = "field-" + tab + "-" + f.key;
+
+    const label = document.createElement("label");
+    label.htmlFor = "in-" + tab + "-" + f.key;
+    label.textContent = f.label;
+    if (f.unit) {
+      const unit = document.createElement("span");
+      unit.className = "field-unit";
+      unit.textContent = f.unit;
+      label.appendChild(unit);
+    }
+
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = "any";
+    input.id = "in-" + tab + "-" + f.key;
+    input.name = f.key;
+    input.autocomplete = "off";
+
+    const err = document.createElement("span");
+    err.className = "field-error";
+    err.id = "err-" + tab + "-" + f.key;
+
+    wrap.appendChild(label);
+    wrap.appendChild(input);
+    wrap.appendChild(err);
+    cfg.form.appendChild(wrap);
+
+    input.addEventListener("input", () => recalculate(tab));
+  }
+}
+
+function writeInputsToForm(tab, values) {
+  for (const f of TABS[tab].fields) {
+    document.getElementById("in-" + tab + "-" + f.key).value = String(values[f.key]);
+  }
+}
+
+/* Returns { inputs, issues } — parse failures become issues too. */
+function readInputsFromForm(tab) {
+  const inputs = {};
+  const issues = [];
+  for (const f of TABS[tab].fields) {
+    const raw = document.getElementById("in-" + tab + "-" + f.key).value.trim();
+    const v = raw === "" ? NaN : Number(raw);
+    if (!isFinite(v)) {
+      issues.push({ message: f.label + " must be numeric.", keys: [f.key] });
+      inputs[f.key] = NaN;
+    } else {
+      inputs[f.key] = v;
+    }
+  }
+  return { inputs, issues };
+}
+
+function setFieldErrors(tab, issues) {
+  for (const f of TABS[tab].fields) {
+    document.getElementById("field-" + tab + "-" + f.key).classList.remove("field-invalid");
+    document.getElementById("err-" + tab + "-" + f.key).textContent = "";
+  }
+  for (const issue of issues) {
+    for (const key of issue.keys) {
+      const wrap = document.getElementById("field-" + tab + "-" + key);
+      if (!wrap) continue;
+      wrap.classList.add("field-invalid");
+      const err = document.getElementById("err-" + tab + "-" + key);
+      if (!err.textContent) err.textContent = issue.message;
+    }
+  }
+}
+
+function setText(id, text, cls) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  if (cls !== undefined) el.className = "rvalue" + (cls ? " " + cls : "");
+}
+
+/* Safety-factor colours: >= 1.5 OK, 1.0–1.5 marginal, < 1.0 cannot drive the load. */
+const sfClass = (sf) => sf >= SF_GOOD ? "good" : (sf >= 1 ? "warn" : "bad");
+
+function renderForwardResults(i, r) {
+  document.getElementById("hero-speed").textContent = fmt(r.metresPerMin, 2);
+  document.getElementById("hero-tph").textContent = fmt(r.tonnesPerHour, 2);
+
+  setText("r-circ", fmt(r.circumferenceM, 4));
+  setText("r-cycles", fmt(r.cyclesPerMin, 3));
+  setText("r-kgmin", fmt(r.cropKgPerMin, 2));
+  setText("r-kgm", fmt(r.cropKgPerM, 2));
+  setText("r-croptotal", fmt(r.cropTotalKg, 2));
+
+  setText("r-mrpm-min", fmt(r.motorRpmMin, 2));
+  setText("r-mrpm-std", fmt(r.motorRpmStd, 2));
+  setText("r-mrpm-max", fmt(r.motorRpmMax, 2));
+  setText("r-drpm-min", fmt(r.driveRpmMin, 3));
+  setText("r-drpm-std", fmt(r.driveRpmStd, 3));
+  setText("r-drpm-max", fmt(r.driveRpmMax, 3));
+
+  setText("r-base-star", fmt(r.baseHzStar, 1));
+  setText("r-base-delta", fmt(r.baseHzDelta, 1));
+  for (const id of ["r-hz-std", "r-hz-std-2"]) document.getElementById(id).textContent = String(i.stdHz);
+  for (const id of ["r-hz-max", "r-hz-max-2", "r-hz-max-3"]) document.getElementById(id).textContent = String(i.maxHz);
+  const kw3 = (a) => a.map(x => fmt(x, 2)).join(" / ");
+  setText("r-power-star", kw3(r.powerStarKw));
+  setText("r-power-delta", kw3(r.powerDeltaKw));
+
+  setText("r-mtorque", fmt(r.motorTorqueNm, 3));
+  setText("r-mtorque-star", fmt(r.motorTorqueStarNm, 3));
+  setText("r-mtorque-delta", fmt(r.motorTorqueDeltaNm, 3));
+  setText("r-mtorque-star-max", fmt(r.motorTorqueStarMaxNm, 3), r.tfStarMax < 1 ? "warn" : "");
+  setText("r-mtorque-delta-max", fmt(r.motorTorqueDeltaMaxNm, 3), r.tfDeltaMax < 1 ? "warn" : "");
+  setText("r-dtorque-star", fmt(r.driveTorqueStarNm, 3));
+  setText("r-dtorque-delta", fmt(r.driveTorqueDeltaNm, 3));
+
+  setText("r-force-star-n", fmt(r.forceStarN, 1));
+  setText("r-force-star-kg", fmt(r.forceStarKg, 2));
+  setText("r-force-delta-n", fmt(r.forceDeltaN, 1));
+  setText("r-force-delta-kg", fmt(r.forceDeltaKg, 2));
+
+  setText("r-friction-kg", fmt(r.frictionKg, 2));
+  setText("r-lift-kg", fmt(r.liftKg, 2));
+  document.getElementById("r-theta").textContent = fmt(i.inclinationDeg, 1);
+  setText("r-incline-n", fmt(r.inclineRequiredN, 1));
+  setText("r-incline-kg", fmt(r.inclineRequiredKg, 2));
+  setText("r-payload-star", fmt(r.availablePayloadStarKg, 2), r.availablePayloadStarKg >= 0 ? "good" : "bad");
+  setText("r-payload-delta", fmt(r.availablePayloadDeltaKg, 2), r.availablePayloadDeltaKg >= 0 ? "good" : "bad");
+
+  setText("r-run-torque", fmt(r.runTorqueNm, 3));
+  setText("r-run-power", fmt(r.runPowerKw, 3));
+  setText("r-sf-run-star", fmtSf(r.sfRunStar), sfClass(r.sfRunStar));
+  setText("r-sf-run-delta", fmtSf(r.sfRunDelta), sfClass(r.sfRunDelta));
+  setText("r-sf-run-star-max", fmtSf(r.sfRunStarMax), sfClass(r.sfRunStarMax));
+  setText("r-sf-run-delta-max", fmtSf(r.sfRunDeltaMax), sfClass(r.sfRunDeltaMax));
+
+  document.getElementById("r-start-pct").textContent = fmt(i.startTorquePct, 0);
+  setText("r-start-breakaway", fmt(r.startBreakawayKg, 2));
+  setText("r-start-lift", fmt(r.startLiftKg, 2));
+  setText("r-start-accel", fmt(r.startAccelKg, 2));
+  setText("r-start-force", fmt(r.startForceKg, 2));
+  setText("r-start-torque", fmt(r.startTorqueNm, 3));
+  setText("r-start-avail", fmt(r.startTorqueAvailNm, 3));
+  setText("r-sf-start", fmtSf(r.sfStart), sfClass(r.sfStart));
+  setText("r-start-power", fmt(r.startPowerKw, 3));
+
+  document.getElementById("r-current-source").textContent = r.estimated
+    ? "IE3 estimate (eff " + fmt(r.effEst * 100, 1) + "%, pf " + fmt(r.pfEst, 2) + ") — enter the nameplate amps to replace it."
+    : "From the nameplate.";
+  document.getElementById("r-v-star").textContent = fmt(MC_SQRT3 * i.ratedDeltaV, 0);
+  document.getElementById("r-v-delta").textContent = String(i.ratedDeltaV);
+  setText("r-amps-star", fmt(r.starA, 2));
+  setText("r-amps-delta", fmt(r.deltaA, 2));
+
+  document.getElementById("s-speed").textContent = fmt(r.metresPerMin, 2);
+  document.getElementById("s-tph").textContent = fmt(r.tonnesPerHour, 2);
+  document.getElementById("s-sf-run").textContent = fmtSf(r.sfRunStar) + " / " + fmtSf(r.sfRunDelta);
+  document.getElementById("s-sf-start").textContent = fmtSf(r.sfStart);
+}
+
+function renderSizingResults(i, r) {
+  document.getElementById("z-ratio-std").textContent = String(r.ratioStd);
+  document.getElementById("z-ratio-exact").textContent = fmt(r.ratioExact, 2);
+  document.getElementById("z-kw-std").textContent = fmt(r.kwStd, 2);
+  document.getElementById("z-kw-exact").textContent = fmt(r.kwRequired, 3);
+  document.getElementById("z-kw-std-delta").textContent = fmt(r.kwStdDelta, 2);
+  document.getElementById("z-kw-exact-delta").textContent = fmt(r.kwRequiredDelta, 3);
+  document.getElementById("z-fla-star-hero").textContent = fmt(r.flaStarA, 2);
+  document.getElementById("z-fla-delta-hero").textContent = fmt(r.flaDeltaA, 2);
+  document.getElementById("z-governs").textContent = r.gravityAssisted
+    ? "neither (load is zero or downhill) — minimum size"
+    : "star by " + r.governsStar + ", delta by " + r.governsDelta;
+
+  setText("z-mrpm", fmt(r.motorRpmStd, 2));
+  setText("z-drpm", fmt(r.driveRpmRequired, 3));
+  setText("z-circ", fmt(r.circumferenceM, 4));
+
+  setText("z-base-star", fmt(r.baseHzStar, 1));
+  setText("z-base-delta", fmt(r.baseHzDelta, 1));
+  for (const id of ["z-hz-std", "z-hz-std-2"]) document.getElementById(id).textContent = String(i.stdHz);
+  setText("z-tf-star", fmt(r.tfStarStd, 3), r.tfStarStd < 1 ? "warn" : "");
+  setText("z-tf-delta", fmt(r.tfDeltaStd, 3), r.tfDeltaStd < 1 ? "warn" : "");
+
+  setText("z-kgm", fmt(r.cropKgPerM, 2));
+  setText("z-croptotal", fmt(r.cropTotalKg, 2));
+  setText("z-friction-kg", fmt(r.frictionKg, 2));
+  setText("z-lift-kg", fmt(r.liftKg, 2));
+  document.getElementById("z-theta").textContent = fmt(i.inclinationDeg, 1);
+  setText("z-incline-kg", fmt(r.inclineRequiredKg, 2));
+  setText("z-start-kg", fmt(r.startForceKg, 2));
+
+  setText("z-mtorque", fmt(r.runTorqueNm, 3));
+  setText("z-run-power", fmt(r.runPowerKw, 3));
+  setText("z-mtorque-start", fmt(r.startTorqueNm, 3));
+  document.getElementById("z-sf-target").textContent = fmt(i.targetSf, 2);
+  setText("z-kw-run", fmt(r.kwForRunStar, 3) + " / " + fmt(r.kwForRunDelta, 3));
+  setText("z-kw-start", fmt(r.kwForStart, 3));
+  setText("z-kw-req", fmt(r.kwRequired, 3), r.kwStdSufficient ? "" : "bad");
+  setText("z-kw-req-delta", fmt(r.kwRequiredDelta, 3), r.kwStdDeltaSufficient ? "" : "bad");
+
+  setText("z-eff-star", fmt(r.effStar * 100, 1) + "% / " + fmt(r.pfStar, 2));
+  setText("z-fla-star", fmt(r.flaStarA, 2));
+  setText("z-eff-delta", fmt(r.effDelta * 100, 1) + "% / " + fmt(r.pfDelta, 2));
+  setText("z-fla-delta", fmt(r.flaDeltaA, 2));
+
+  setText("z-actual-speed", fmt(r.actualSpeed, 2));
+  setText("z-actual-tph", fmt(r.actualTph, 2));
+  setText("z-sf-run-star", fmtSf(r.actualSfRunStar), sfClass(r.actualSfRunStar));
+  setText("z-sf-run-delta", fmtSf(r.actualSfRunDelta), sfClass(r.actualSfRunDelta));
+  setText("z-sf-start-star", fmtSf(r.actualSfStartStar), sfClass(r.actualSfStartStar));
+  setText("z-sf-start-delta", fmtSf(r.actualSfStartDelta), sfClass(r.actualSfStartDelta));
+  setText("z-speed-err", (r.speedErrPct >= 0 ? "+" : "") + fmt(r.speedErrPct, 1),
+    Math.abs(r.speedErrPct) <= 10 ? "" : "warn");
+
+  document.getElementById("s-ratio").textContent = String(r.ratioStd);
+  document.getElementById("s-kw").textContent = fmt(r.kwStd, 2);
+  document.getElementById("s-fla-star").textContent = fmt(r.flaStarA, 1);
+  document.getElementById("s-kw-delta").textContent = fmt(r.kwStdDelta, 2);
+  document.getElementById("s-fla-delta").textContent = fmt(r.flaDeltaA, 1);
+  document.getElementById("s-actual-speed").textContent = fmt(r.actualSpeed, 2);
+  document.getElementById("s-actual-sf").textContent = fmtSf(r.actualSfRunStar) + " / " + fmtSf(r.actualSfStartStar);
+}
+
+function recalculate(tab) {
+  const cfg = TABS[tab];
+  const { inputs, issues: parseIssues } = readInputsFromForm(tab);
+  const issues = parseIssues.length ? parseIssues : cfg.validate(inputs);
+  setFieldErrors(tab, issues);
+
+  const grid = document.getElementById("results-" + tab);
+  const isActive = tab === activeTab;
+
+  if (issues.length) {
+    grid.classList.add("stale");
+    if (isActive) {
+      banner.textContent = issues.map(x => x.message).join(" ");
+      banner.classList.add("visible");
+      statusFlag.textContent = issues.length === 1 ? "1 input issue" : issues.length + " input issues";
+      statusFlag.className = "status-flag err";
+    }
+    return;
+  }
+
+  grid.classList.remove("stale");
+  if (isActive) {
+    banner.classList.remove("visible");
+    statusFlag.textContent = "OK";
+    statusFlag.className = "status-flag ok";
+  }
+
+  if (tab === "forward") {
+    const results = calculateMotor(inputs);
+    renderForwardResults(inputs, results);
+    reports.forward = buildForwardReport(inputs, results);
+  } else {
+    const results = calculateSizing(inputs);
+    renderSizingResults(inputs, results);
+    reports.sizing = buildSizingReport(inputs, results);
+  }
+  if (isActive) reportText.textContent = reports[tab];
+}
+
+/* ---------- Tabs ---------- */
+
+const TAB_NAMES = ["forward", "sizing", "reference"];
+
+function selectTab(tab) {
+  activeTab = tab;
+  for (const t of TAB_NAMES) {
+    document.getElementById("tab-" + t).classList.toggle("active", t === tab);
+    document.getElementById("inputs-" + t).hidden = t !== tab;
+    document.getElementById("results-" + t).hidden = t !== tab;
+    document.getElementById("status-" + t).hidden = t !== tab;
+  }
+  document.getElementById("btn-reset").disabled = tab === "reference";
+  if (tab === "reference") {
+    banner.classList.remove("visible");
+    statusFlag.textContent = "OK";
+    statusFlag.className = "status-flag ok";
+    reportText.textContent = reports.reference;
+  } else {
+    recalculate(tab);
+  }
+}
+
+for (const t of TAB_NAMES) {
+  document.getElementById("tab-" + t).addEventListener("click", () => selectTab(t));
+}
+
+/* ---------- Toolbar actions ---------- */
+
+document.getElementById("btn-reset").addEventListener("click", () => {
+  writeInputsToForm(activeTab, TABS[activeTab].defaults());
+  recalculate(activeTab);
+});
+
+function saveInputs() {
+  const payload = {
+    type: "taynium-motor-calculator-inputs",
+    version: 2,
+    saved: new Date().toISOString(),
+    activeTab,
+    forward: readInputsFromForm("forward").inputs,
+    sizing: readInputsFromForm("sizing").inputs
+  };
+  downloadFile("motor-calculator-inputs.json", JSON.stringify(payload, null, 2), "application/json");
+}
+
+function applyLoadedValues(tab, src) {
+  if (!src || typeof src !== "object") return 0;
+  const merged = TABS[tab].defaults();
+  let found = 0;
+  for (const f of TABS[tab].fields) {
+    const v = Number(src[f.key]);
+    if (isFinite(v)) { merged[f.key] = v; found++; }
+  }
+  if (found) {
+    writeInputsToForm(tab, merged);
+    recalculate(tab);
+  }
+  return found;
+}
+
+function loadInputs(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      let found = 0;
+      if (data && typeof data === "object" && (data.forward || data.sizing)) {
+        found += applyLoadedValues("forward", data.forward);
+        found += applyLoadedValues("sizing", data.sizing);
+        if (data.activeTab === "forward" || data.activeTab === "sizing") selectTab(data.activeTab);
+      } else {
+        /* v1 files stored a single { inputs } object for the forward tab. */
+        const src = data && typeof data === "object" && data.inputs && typeof data.inputs === "object"
+          ? data.inputs : data;
+        found += applyLoadedValues("forward", src);
+        if (found) selectTab("forward");
+      }
+      if (!found) throw new Error("No recognised input values in file.");
+    } catch (e) {
+      banner.textContent = "Could not load file: " + e.message;
+      banner.classList.add("visible");
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById("btn-save").addEventListener("click", saveInputs);
+document.getElementById("btn-load").addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", () => {
+  if (fileInput.files && fileInput.files[0]) loadInputs(fileInput.files[0]);
+  fileInput.value = "";
+});
+
+function downloadFile(name, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function copyReport(btn) {
+  const report = reports[activeTab];
+  if (!report) return;
+  const done = () => {
+    const original = btn.textContent;
+    btn.textContent = "Copied";
+    setTimeout(() => { btn.textContent = original; }, 1200);
+  };
+  /* execCommand fallback for non-secure contexts (e.g. plain http or file://). */
+  const fallback = () => {
+    const ta = document.createElement("textarea");
+    ta.value = report;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { if (document.execCommand("copy")) done(); } catch (e) {}
+    ta.remove();
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(report).then(done, fallback);
+  } else {
+    fallback();
+  }
+}
+
+function downloadReport() {
+  const report = reports[activeTab];
+  if (!report) return;
+  const name = {
+    forward: "motor-calculator-report.txt",
+    sizing: "motor-sizing-report.txt",
+    reference: "motor-calculator-formulas.txt"
+  }[activeTab];
+  downloadFile(name, report, "text/plain");
+}
+
+document.getElementById("btn-copy").addEventListener("click", (e) => copyReport(e.currentTarget));
+document.getElementById("btn-copy-2").addEventListener("click", (e) => copyReport(e.currentTarget));
+document.getElementById("btn-download").addEventListener("click", downloadReport);
+document.getElementById("btn-download-2").addEventListener("click", downloadReport);
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+    if (e.key === "s") { e.preventDefault(); saveInputs(); }
+    if (e.key === "o") { e.preventDefault(); fileInput.click(); }
+  }
+});
+
+/* ---------- Start ---------- */
+writeInputsToForm("forward", defaultForwardInputs());
+writeInputsToForm("sizing", defaultSizingInputs());
+recalculate("sizing");
+recalculate("forward");
+</script>
+</body>
+</html>
