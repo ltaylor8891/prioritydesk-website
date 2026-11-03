@@ -1,5 +1,5 @@
-import {turnActor,headingTo,facingTarget} from './actor-motion.js?v=motion-1';
-import {wallDistance} from './core.js?v=motion-1';
+import {turnActor,headingTo,facingTarget} from './actor-motion.js?v=feedback-1';
+import {wallDistance} from './core.js?v=feedback-1';
 export const ENEMY_GUNS=[{range:17,delay:2.8,speed:12,damage:8},{range:12,delay:3.5,speed:10,damage:5},{range:19,delay:2.5,speed:14,damage:7}];
 export function readyEnemyShot(e,player,dt,wave,hasSight){
   e.fire=Math.max(0,(e.fire||0)-dt);e.attack=Math.max(0,e.attack-dt);

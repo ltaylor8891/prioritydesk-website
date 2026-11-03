@@ -1,4 +1,4 @@
-import {cover,walls} from './core.js?v=motion-1';
+import {cover,walls} from './core.js?v=feedback-1';
 export const TRAINING_TARGETS=[{x:-12,z:-12.8,yaw:0},{x:-6,z:-12.8,yaw:0},{x:5,z:-12.8,yaw:0},{x:11,z:-12.8,yaw:0}];
 const sand=[.73,.65,.46],wood=[.51,.39,.25],olive=[.44,.49,.29],ink=[.12,.16,.12];
 export function buildTrainingGround(rawBox,quad){

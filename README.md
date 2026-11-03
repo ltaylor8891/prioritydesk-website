@@ -76,3 +76,5 @@ Source: https://github.com/ltaylor8891/motor-calculator (`motor-calculator-app/`
 Dead Signal team build: /Deadsignal now defaults to 4 vs 4 bot team deathmatch, with shared weapons, perception-based AI, respawns, team colours, scoring and a spectator preview. Online network joining is not enabled yet.
 
 Dead Signal field build 004 adds distance-driven walking, matching body/aim rotation, distinct rear character artwork and a directional tactical minimap.
+
+Dead Signal field build 005 adds floating confirmed-damage totals, overhead health bars that expire after one second, and a bottom elimination feed naming the attacker, weapon and victim.

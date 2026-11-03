@@ -1,7 +1,7 @@
-import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=motion-1';
-import {blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=motion-1';
-import {WEAPONS,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=motion-1';
-import {raySphere} from './combat.js?v=motion-1';
+import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=feedback-1';
+import {blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=feedback-1';
+import {WEAPONS,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=feedback-1';
+import {raySphere} from './combat.js?v=feedback-1';
 
 export const MATCH_RULES={teamSize:4,scoreLimit:30,timeLimit:300,respawn:3,protection:1.5};
 export const TEAM_NAMES=['BLUE','ORANGE'];
@@ -19,7 +19,7 @@ export function createMatch({spectator=false,random=Math.random}={}){
     const a={id,team,name:slot===0&&team===0&&spectator?'Finch':names[team][slot],human:!spectator&&id===0,
       x:spawns[id][0],z:spawns[id][1],y:1.65,yaw:team===0?0:Math.PI,pitch:0,
       heading:team===0?0:Math.PI,variant:slot%3,phase:random()*6,flash:0,fire:0,aim:0,
-      hp:100,kills:0,deaths:0,respawn:0,protection:MATCH_RULES.protection,arsenal,
+      hp:100,maxHp:100,kills:0,deaths:0,respawn:0,protection:MATCH_RULES.protection,arsenal,
       targetId:null,memory:null,reaction:0,think:0,route:id,goal:null,path:null,pathTimer:0,
       burst:0,rest:0,strafe:slot%2?1:-1,state:'PATROL',lastAttacker:null,flankGoal:null};
     if(!a.human)a.yaw=a.heading+Math.PI;Object.assign(a,{moving:false,walkPhase:0});match.actors.push(a);
@@ -31,12 +31,14 @@ export function endMatch(match){
 }
 export function applyDamage(match,victim,shooter,amount){
   if(match.ended||victim.hp<=0||victim.protection>0||victim.team===shooter.team)return false;
+  const dealt=Math.min(victim.hp,amount);
   victim.hp=Math.max(0,victim.hp-amount);victim.flash=.15;victim.lastAttacker=shooter.id;
-  match.events.push({type:'hit',victim:victim.id,shooter:shooter.id,amount});
+  match.events.push({type:'hit',victim:victim.id,shooter:shooter.id,amount:dealt,x:victim.x,z:victim.z});
   if(victim.hp===0){
     victim.deaths++;victim.respawn=MATCH_RULES.respawn;victim.state='RESPAWNING';victim.aim=0;
     shooter.kills++;match.scores[shooter.team]++;
-    match.feed.unshift({text:`${shooter.name} → ${victim.name}`,team:shooter.team,time:match.elapsed});match.feed=match.feed.slice(0,4);
+    match.feed.unshift({text:`${shooter.name} → ${victim.name}`,killer:shooter.name,victim:victim.name,
+      weapon:WEAPONS[shooter.arsenal.selected].short,team:shooter.team,victimTeam:victim.team,time:match.elapsed});match.feed=match.feed.slice(0,4);
     match.events.push({type:'kill',victim:victim.id,shooter:shooter.id});
     if(match.scores[shooter.team]>=MATCH_RULES.scoreLimit)endMatch(match);
   }
