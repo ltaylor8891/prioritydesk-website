@@ -54,6 +54,8 @@ To update it, run `npm.cmd run build -- --base=/GFC/` in the Geometry source pro
 
 ## Dead Signal
 
-The standalone 3D FPS is hosted at https://prioritydesk.co.uk/Deadsignal/ (case-sensitive). GitHub Pages redirects `/Deadsignal` to the directory URL. The six dependency-free static game files live in `dist/Deadsignal/`; all asset and module URLs resolve relative to that directory.
+The standalone 3D FPS is hosted at https://prioritydesk.co.uk/Deadsignal/ (case-sensitive). GitHub Pages redirects `/Deadsignal` to the directory URL. The dependency-free static game files live in `dist/Deadsignal/`; all asset and module URLs resolve relative to that directory.
 
 Source: https://github.com/ltaylor8891/dead-signal. To update, run `npm test` in the game repository and copy its `dist` contents into this directory, then commit and push to `main`. The game uses real mouse capture; play in a standalone desktop browser and click **Enter the outpost**, with Escape releasing the pointer.
+
+Dead Signal now uses original, smooth cartoon character cutouts: thick black outlines, oversized expressive heads, and olive, khaki, and blue clothing. View the animated lineup at https://prioritydesk.co.uk/Deadsignal/characters.html. The character drawing module is bundled locally; no external images or fonts are needed.
