@@ -7,7 +7,7 @@ const palettes=[
   {cloth:'#928062',shade:'#72644e',skin:'#ddc9a4',accent:'#cbb584',boots:'#51453b'},
   {cloth:'#526f7e',shade:'#3b5361',skin:'#eee0c4',accent:'#a6bfc0',boots:'#404b50'}
 ];
-export function drawEnemy(ctx,frame=0,variant=0,firing=false,team=null,back=false){
+export function drawEnemy(ctx,frame=0,variant=0,firing=false,team=null,back=false,dead=false){
   const c={...palettes[variant%palettes.length],...(team===0?{cloth:'#5285a3',shade:'#375b75',accent:'#9dd4ec'}:team===1?{cloth:'#c1844e',shade:'#8c5639',accent:'#ffd39a'}:{})},ink='#141713',step=Math.sin(frame*Math.PI/4),bob=Math.abs(step)*5;
   ctx.save();ctx.lineJoin='round';ctx.lineCap='round';ctx.lineWidth=9;ctx.strokeStyle=ink;
   const shape=(d,fill,stroke=ink,width=9)=>{const p=new Path2D(d);ctx.fillStyle=fill;if(fill)ctx.fill(p);if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke(p);}};
@@ -85,6 +85,12 @@ export function drawEnemy(ctx,frame=0,variant=0,firing=false,team=null,back=fals
     shape('M 111 170 Q 125 151 147 164 Q 132 164 120 175 Z',ink,ink,5);
     shape('M 168 233 L 184 233 L 184 266 L 168 266 Z','#343f3d',ink,4);
     line('M 179 232 L 182 218',4);line('M 173 242 L 180 242 M 173 249 L 180 249',3,c.accent);
+  }
+  if(dead){
+    // Cartoon knockout expression, without blood or gore.
+    oval(129,151,65,42,c.skin,null);
+    line('M 83 130 L 103 149 M 103 130 L 83 149 M 150 130 L 170 149 M 170 130 L 150 149',6);
+    oval(128,175,10,8,ink,null);
   }
   // Foreshortened barrel points along the character's forward normal.
   ctx.save();ctx.translate(firing?-4:0,firing?2:0);

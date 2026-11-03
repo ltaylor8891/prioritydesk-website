@@ -1,7 +1,8 @@
-import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=feedback-1';
-import {blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=feedback-1';
-import {WEAPONS,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=feedback-1';
-import {raySphere} from './combat.js?v=feedback-1';
+import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=recovery-1';
+import {makeCorpse,CORPSE_LIFETIME,recoverHealth} from './life-effects.js?v=recovery-1';
+import {blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=recovery-1';
+import {WEAPONS,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=recovery-1';
+import {raySphere} from './combat.js?v=recovery-1';
 
 export const MATCH_RULES={teamSize:4,scoreLimit:30,timeLimit:300,respawn:3,protection:1.5};
 export const TEAM_NAMES=['BLUE','ORANGE'];
@@ -13,13 +14,13 @@ const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const bearing=(a,b)=>Math.atan2(b.x-a.x,a.z-b.z);
 const angleDiff=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
 export function createMatch({spectator=false,random=Math.random}={}){
-  const match={actors:[],scores:[0,0],elapsed:0,ended:false,winner:null,events:[],feed:[],random,spectator};
+  const match={actors:[],corpses:[],scores:[0,0],elapsed:0,ended:false,winner:null,events:[],feed:[],random,spectator};
   for(let team=0;team<2;team++)for(let slot=0;slot<4;slot++){
     const id=team*4+slot,arsenal=createArsenal();arsenal.selected=slot%3;
     const a={id,team,name:slot===0&&team===0&&spectator?'Finch':names[team][slot],human:!spectator&&id===0,
       x:spawns[id][0],z:spawns[id][1],y:1.65,yaw:team===0?0:Math.PI,pitch:0,
       heading:team===0?0:Math.PI,variant:slot%3,phase:random()*6,flash:0,fire:0,aim:0,
-      hp:100,maxHp:100,kills:0,deaths:0,respawn:0,protection:MATCH_RULES.protection,arsenal,
+      hp:100,maxHp:100,lastDamage:-Infinity,recovering:false,kills:0,deaths:0,respawn:0,protection:MATCH_RULES.protection,arsenal,
       targetId:null,memory:null,reaction:0,think:0,route:id,goal:null,path:null,pathTimer:0,
       burst:0,rest:0,strafe:slot%2?1:-1,state:'PATROL',lastAttacker:null,flankGoal:null};
     if(!a.human)a.yaw=a.heading+Math.PI;Object.assign(a,{moving:false,walkPhase:0});match.actors.push(a);
@@ -33,8 +34,10 @@ export function applyDamage(match,victim,shooter,amount){
   if(match.ended||victim.hp<=0||victim.protection>0||victim.team===shooter.team)return false;
   const dealt=Math.min(victim.hp,amount);
   victim.hp=Math.max(0,victim.hp-amount);victim.flash=.15;victim.lastAttacker=shooter.id;
+  victim.lastDamage=match.elapsed;victim.recovering=false;
   match.events.push({type:'hit',victim:victim.id,shooter:shooter.id,amount:dealt,x:victim.x,z:victim.z});
   if(victim.hp===0){
+    match.corpses.push(makeCorpse(victim,match.elapsed));
     victim.deaths++;victim.respawn=MATCH_RULES.respawn;victim.state='RESPAWNING';victim.aim=0;
     shooter.kills++;match.scores[shooter.team]++;
     match.feed.unshift({text:`${shooter.name} → ${victim.name}`,killer:shooter.name,victim:victim.name,
@@ -60,7 +63,7 @@ export function chooseSpawn(match,actor){
 }
 function respawnActor(match,a){
   const p=chooseSpawn(match,a),selected=a.arsenal.selected;
-  Object.assign(a,p,{hp:100,protection:MATCH_RULES.protection,respawn:0,yaw:p.z>0?0:Math.PI,pitch:0,
+  Object.assign(a,p,{hp:100,lastDamage:-Infinity,recovering:false,protection:MATCH_RULES.protection,respawn:0,yaw:p.z>0?0:Math.PI,pitch:0,
     heading:p.z>0?0:Math.PI,arsenal:createArsenal(),targetId:null,memory:null,goal:null,path:null,
     reaction:0,burst:0,rest:.5,think:0,aim:0,fire:0,flash:0,state:'PATROL',flankGoal:null});
   a.arsenal.selected=selected;if(!a.human)a.yaw=a.heading+Math.PI;a.moving=false;a.walkPhase=0;match.events.push({type:'respawn',actor:a.id});
@@ -194,9 +197,11 @@ export function tickMatch(match,dt){
   for(const a of match.actors){
     a.flash=Math.max(0,a.flash-dt);a.fire=Math.max(0,a.fire-dt);a.protection=Math.max(0,a.protection-dt);
     if(a.hp<=0){a.respawn=Math.max(0,a.respawn-dt);if(a.respawn===0)respawnActor(match,a);continue;}
+    const before=a.hp;a.hp=recoverHealth(a.hp,a.lastDamage,match.elapsed,dt,a.maxHp);a.recovering=a.hp>before;
     if(!a.human){const previous={x:a.x,z:a.z};botTick(match,a,dt);updateWalk(a,previous,dt);}
     if(match.ended)break;
   }
   match.feed=match.feed.filter(e=>match.elapsed-e.time<7);
+  match.corpses=match.corpses.filter(c=>match.elapsed-c.diedAt<CORPSE_LIFETIME);
   if(match.elapsed>=MATCH_RULES.timeLimit)endMatch(match);
 }

@@ -78,3 +78,5 @@ Dead Signal team build: /Deadsignal now defaults to 4 vs 4 bot team deathmatch, 
 Dead Signal field build 004 adds distance-driven walking, matching body/aim rotation, distinct rear character artwork and a directional tactical minimap.
 
 Dead Signal field build 005 adds floating confirmed-damage totals, overhead health bars that expire after one second, and a bottom elimination feed naming the attacker, weapon and victim.
+
+Dead Signal field build 006 adds animated collapses, bodies held on the floor for two seconds before fading, damage-scaled red screen shading, and delayed automatic health recovery.

@@ -1,21 +1,22 @@
-import {createHitFeedback,recordHit,clearActorFeedback,drawHitFeedback} from './hit-feedback.js?v=feedback-1';
-import {WALK_FRAMES,walkFrame,updateWalk,turnActor,headingTo,showsBack} from './actor-motion.js?v=feedback-1';
-import {drawMinimap} from './minimap.js?v=feedback-1';
-import {clamp,cover,walls,blocked,move,wallDistance,visible,flowField,nextStep,ENEMY_SIZE,spriteCorners,raySprite} from './core.js?v=feedback-1';
-import {drawEnemy,CHARACTER_WIDTH,CHARACTER_HEIGHT} from './enemy-art.js?v=feedback-1';
-import {WEAPONS,createArsenal,selectWeapon,startReload,stepWeapon,fireWeapon,drawPlayerWeapon} from './weapons.js?v=feedback-1';
-import {readyEnemyShot,stepProjectile,ENEMY_GUNS,enemyVolley} from './combat.js?v=feedback-1';
-import {buildTrainingGround,drawDecal,drawTarget,TRAINING_TARGETS} from './training-ground.js?v=feedback-1';
+import {makeCorpse,corpseCorners,corpseOpacity,CORPSE_LIFETIME,recoverHealth,damageOpacity} from './life-effects.js?v=recovery-1';
+import {createHitFeedback,recordHit,clearActorFeedback,drawHitFeedback} from './hit-feedback.js?v=recovery-1';
+import {WALK_FRAMES,walkFrame,updateWalk,turnActor,headingTo,showsBack} from './actor-motion.js?v=recovery-1';
+import {drawMinimap} from './minimap.js?v=recovery-1';
+import {clamp,cover,walls,blocked,move,wallDistance,visible,flowField,nextStep,ENEMY_SIZE,spriteCorners,raySprite} from './core.js?v=recovery-1';
+import {drawEnemy,CHARACTER_WIDTH,CHARACTER_HEIGHT} from './enemy-art.js?v=recovery-1';
+import {WEAPONS,createArsenal,selectWeapon,startReload,stepWeapon,fireWeapon,drawPlayerWeapon} from './weapons.js?v=recovery-1';
+import {readyEnemyShot,stepProjectile,ENEMY_GUNS,enemyVolley} from './combat.js?v=recovery-1';
+import {buildTrainingGround,drawDecal,drawTarget,TRAINING_TARGETS} from './training-ground.js?v=recovery-1';
 import {mouseDelta} from './mouse-look.js';
 import {createPointerLock} from './pointer-lock.js';
-import {createMatch,tickMatch,fireMatchWeapon,MATCH_RULES,TEAM_NAMES,TEAM_COLORS} from './team-match.js?v=feedback-1';
+import {createMatch,tickMatch,fireMatchWeapon,MATCH_RULES,TEAM_NAMES,TEAM_COLORS} from './team-match.js?v=recovery-1';
 const $=id=>document.getElementById(id),canvas=$('world'),gl=canvas.getContext('webgl',{antialias:true,alpha:false});
 if(!gl){$('unsupported').hidden=false;throw new Error('WebGL unavailable');}
 const vertex=`attribute vec3 aPos;attribute vec3 aColor;attribute vec2 aUV;uniform mat4 uVP;varying vec3 vColor;varying vec2 vUV;varying float vDepth;void main(){gl_Position=uVP*vec4(aPos,1.0);vColor=aColor;vUV=aUV;vDepth=gl_Position.w;}`;
-const fragment=`precision mediump float;varying vec3 vColor;varying vec2 vUV;varying float vDepth;uniform sampler2D uTexture;uniform float uSprite;uniform float uFlash;void main(){vec4 tex=mix(vec4(1.0),texture2D(uTexture,vUV),uSprite);if(tex.a<0.5)discard;vec3 color=mix(vColor*tex.rgb,vec3(1.0,0.65,0.35),uFlash);float fog=clamp((vDepth-14.0)/65.0,0.0,0.82);gl_FragColor=vec4(mix(color,vec3(0.69,0.75,0.64),fog),1.0);}`;
+const fragment=`precision mediump float;varying vec3 vColor;varying vec2 vUV;varying float vDepth;uniform sampler2D uTexture;uniform float uSprite;uniform float uFlash;uniform float uOpacity;void main(){vec4 tex=mix(vec4(1.0),texture2D(uTexture,vUV),uSprite);if(tex.a<0.5)discard;vec3 color=mix(vColor*tex.rgb,vec3(1.0,0.65,0.35),uFlash);float fog=clamp((vDepth-14.0)/65.0,0.0,0.82);gl_FragColor=vec4(mix(color,vec3(0.69,0.75,0.64),fog),uOpacity);}`;
 function shader(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;}
 const program=gl.createProgram();gl.attachShader(program,shader(gl.VERTEX_SHADER,vertex));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,fragment));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));gl.useProgram(program);
-const loc=Object.fromEntries(['uVP','uTexture','uSprite','uFlash'].map(n=>[n,gl.getUniformLocation(program,n)]));
+const loc=Object.fromEntries(['uVP','uTexture','uSprite','uFlash','uOpacity'].map(n=>[n,gl.getUniformLocation(program,n)]));
 const attrs=['aPos','aColor','aUV'].map(n=>gl.getAttribLocation(program,n));
 function bind(buffer){gl.bindBuffer(gl.ARRAY_BUFFER,buffer);attrs.forEach((a,i)=>{gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,i===2?2:3,gl.FLOAT,false,32,[0,12,24][i]);});}
 function quad(out,points,color,uv=[[0,0],[1,0],[1,1],[0,1]]){for(const i of [0,1,2,0,2,3])out.push(...points[i],...color,...uv[i]);}
@@ -28,6 +29,7 @@ function texture(draw,width=32,height=48,smooth=false){const c=document.createEl
 const actorTextures=[null,0,1].map(team=>[0,1,2].map(variant=>({
   front:Array.from({length:WALK_FRAMES},(_,frame)=>texture(c=>drawEnemy(c,frame,variant,false,team),CHARACTER_WIDTH,CHARACTER_HEIGHT,true)),
   back:Array.from({length:WALK_FRAMES},(_,frame)=>texture(c=>drawEnemy(c,frame,variant,false,team,true),CHARACTER_WIDTH,CHARACTER_HEIGHT,true)),
+  dead:texture(c=>drawEnemy(c,0,variant,false,team,false,true),CHARACTER_WIDTH,CHARACTER_HEIGHT,true),
   fire:Array.from({length:WALK_FRAMES},(_,frame)=>texture(c=>drawEnemy(c,frame,variant,true,team),CHARACTER_WIDTH,CHARACTER_HEIGHT,true))
 })));
 const teamMarkers=TEAM_COLORS.map((color,i)=>texture(c=>{c.fillStyle=color;c.strokeStyle='#17241f';c.lineWidth=6;c.fillRect(3,3,122,42);c.strokeRect(3,3,122,42);c.fillStyle='#17241f';c.font='bold 21px Arial';c.textAlign='center';c.fillText(TEAM_NAMES[i],64,32);},128,48,true));
@@ -39,7 +41,7 @@ const medTexture=texture(c=>{c.fillStyle='#172e32';c.fillRect(4,16,24,22);c.fill
 const weaponCanvas=$('weapon'),wc=weaponCanvas.getContext('2d'),map=$('map').getContext('2d');
 let arsenal=createArsenal(),projectiles=[],tracers=[],targets=TRAINING_TARGETS.map(t=>({...t,flash:0})),targetHits=0,tourView=0;
 let width=0,height=0,now=0,last=0,mode='menu',wave=0,enemies=[],meds=[],kills=0,health=100,recoil=0,hurt=0,hit=0,noticeTime=0,waveWait=0,flow=new Map(),flowTimer=0,elapsed=0,muted=false,audio=null,mouseDown=false;
-let match=null,selectedMode='teams',feedback=createHitFeedback(),drillFeed=[],feedStamp='';
+let match=null,selectedMode='teams',feedback=createHitFeedback(),drillFeed=[],feedStamp='',corpses=[],lastDamage=-Infinity,recovering=false;
 const keys=new Set();let player={x:0,y:1.65,z:12,yaw:0,pitch:0};
 const pointerCapture=createPointerLock(canvas,document,captureState);
 function perspective(fov,aspect,near,far){const f=1/Math.tan(fov/2),nf=1/(near-far);return [f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,2*far*near*nf,0];}
@@ -48,7 +50,7 @@ function view(p){const s=Math.sin(p.yaw),c=Math.cos(p.yaw),sp=Math.sin(p.pitch),
 function tone(freq,duration,type='square',volume=.035,end=freq){if(muted||!audio)return;const osc=audio.createOscillator(),gain=audio.createGain();osc.type=type;osc.frequency.setValueAtTime(freq,audio.currentTime);osc.frequency.exponentialRampToValueAtTime(Math.max(1,end),audio.currentTime+duration);gain.gain.setValueAtTime(volume,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);osc.connect(gain);gain.connect(audio.destination);osc.start();osc.stop(audio.currentTime+duration);}
 function notify(message,time=2){$('notice').textContent=message;noticeTime=time;}
 function updateHud(){
-  $('health').textContent=Math.ceil(health);$('healthbar').style.width=health+'%';
+  $('health').textContent=Math.ceil(health);$('healthbar').style.width=health+'%';$('vital-label').textContent=recovering?'RECOVERING':'VITALS';$('healthbar').classList.toggle('recovering',recovering);
   $('ammo').textContent=String(arsenal.ammo[arsenal.selected]).padStart(2,'0');$('ammo-max').textContent=WEAPONS[arsenal.selected].capacity;
   $('weapon-state').textContent=arsenal.reload>0?'RELOADING…':WEAPONS[arsenal.selected].name;
   $('wave').textContent=mode==='tour'?'TRAINING GROUND / PREVIEW':`DRILL ${String(wave).padStart(2,'0')} / 05`;
@@ -67,7 +69,7 @@ function updateHud(){
 }
 function spawnWave(){wave++;const spots=[[-12,-12],[12,-12],[-12,11],[12,11],[0,-13],[-13,0],[13,0],[5,12],[-5,-13],[11,9],[4,-13],[-12,6]];enemies=[];for(let i=0;i<3+wave;i++){let [x,z]=spots[(i+wave-1)%spots.length];if(Math.hypot(x-player.x,z-player.z)<5){x=-x;z=-z;}enemies.push({id:`drill-${wave}-${i}`,name:['Rookie','Old Hand','Operator'][i%3]+' '+(i+1),maxHp:wave>3?3:2,x,z,variant:i%3,heading:Math.atan2(player.x-x,z-player.z),yaw:Math.atan2(player.x-x,z-player.z)+Math.PI,moving:false,walkPhase:0,hp:wave>3?3:2,phase:Math.random()*6,attack:1.2+i*.45,aim:0,fire:0,flash:0});}notify(`WAVE ${String(wave).padStart(2,'0')}\nCLEAR THE TRAINING GROUND`,2.5);tone(320,.25,'sine',.045,640);updateHud();}
 function begin(spectator=false){
-  feedback=createHitFeedback();drillFeed=[];feedStamp='';spectator=spectator===true;document.body.classList.toggle('spectating',spectator);document.body.classList.remove('previewing');match=null;player={x:0,y:1.65,z:12,yaw:0,pitch:0};health=100;arsenal=createArsenal();projectiles=[];tracers=[];targetHits=0;targets=TRAINING_TARGETS.map(t=>({...t,flash:0}));wave=0;kills=0;elapsed=0;meds=[];waveWait=0;hurt=0;hit=0;recoil=0;flowTimer=0;keys.clear();mouseDown=false;mode=spectator?'spectating':'paused';
+  corpses=[];lastDamage=-Infinity;recovering=false;feedback=createHitFeedback();drillFeed=[];feedStamp='';spectator=spectator===true;document.body.classList.toggle('spectating',spectator);document.body.classList.remove('previewing');match=null;player={x:0,y:1.65,z:12,yaw:0,pitch:0};health=100;arsenal=createArsenal();projectiles=[];tracers=[];targetHits=0;targets=TRAINING_TARGETS.map(t=>({...t,flash:0}));wave=0;kills=0;elapsed=0;meds=[];waveWait=0;hurt=0;hit=0;recoil=0;flowTimer=0;keys.clear();mouseDown=false;mode=spectator?'spectating':'paused';
   $('tour-controls').hidden=!spectator;$('menu').hidden=true;$('end').hidden=true;$('pause').hidden=true;$('hud').hidden=false;
   if(selectedMode==='teams'||spectator){match=createMatch({spectator});if(!spectator){player=match.actors[0];arsenal=player.arsenal;}enemies=match.actors.filter(a=>!a.human);notify(spectator?'BLUE vs ORANGE · BOT MATCH':'BLUE TEAM\nFIRST TO 30 · TAB FOR SCOREBOARD',3);updateHud();}else spawnWave();
   if(spectator)document.body.classList.add('previewing');else lock();
@@ -107,13 +109,13 @@ function shoot(){
     const dir={x:Math.sin(yaw)*cp,y:Math.sin(pitch),z:-Math.cos(yaw)*cp};let nearest=Math.min(weapon.range,wallDistance(player,dir)),target=null,board=null;
     for(const e of enemies){const t=raySprite(player,dir,e,ENEMY_SIZE,0);if(t<nearest){nearest=t;target=e;}}
     for(const b of targets){const t=raySprite(player,dir,b,2.2,0);if(t<nearest){nearest=t;target=null;board=b;}}
-    if(target){target.hp--;target.flash=.12;hit=.16;recordHit(feedback,target,1,elapsed);if(target.hp<=0){drillFeed.unshift({killer:'You',victim:target.name,weapon:weapon.short,team:0,victimTeam:1,time:elapsed});drillFeed=drillFeed.slice(0,4);kills++;enemies=enemies.filter(e=>e!==target);if(kills%4===0)meds.push({x:target.x,z:target.z});}}
+    if(target){target.hp--;target.flash=.12;hit=.16;recordHit(feedback,target,1,elapsed);if(target.hp<=0){corpses.push(makeCorpse(target,elapsed));drillFeed.unshift({killer:'You',victim:target.name,weapon:weapon.short,team:0,victimTeam:1,time:elapsed});drillFeed=drillFeed.slice(0,4);kills++;enemies=enemies.filter(e=>e!==target);if(kills%4===0)meds.push({x:target.x,z:target.z});}}
     if(board){board.flash=.2;targetHits++;hit=.16;tone(580,.08,'triangle',.025,280);}
     tracers.push({a:{x:player.x+Math.cos(player.yaw)*.18,y:player.y-.18,z:player.z+Math.sin(player.yaw)*.18},b:{x:player.x+dir.x*nearest,y:player.y+dir.y*nearest,z:player.z+dir.z*nearest},life:.065});
   }
   updateHud();
 }
-function damage(amount,source){health=Math.max(0,health-amount);hurt=.6;tone(70,.15,'sawtooth',.05,30);updateHud();if(health<=0){drillFeed.unshift({killer:source?.shooterName||'Sentry',victim:'You',weapon:source?.weapon||'CARBINE',team:1,victimTeam:0,time:elapsed});drillFeed=drillFeed.slice(0,4);finish(false);}}
+function damage(amount,source){lastDamage=elapsed;recovering=false;health=Math.max(0,health-amount);hurt=.6;tone(70,.15,'sawtooth',.05,30);updateHud();if(health<=0){drillFeed.unshift({killer:source?.shooterName||'Sentry',victim:'You',weapon:source?.weapon||'CARBINE',team:1,victimTeam:0,time:elapsed});drillFeed=drillFeed.slice(0,4);finish(false);}}
 function tick(dt){
   if(match&&(mode==='playing'||mode==='spectating')){tickTeams(dt);return;}
   if(mode!=='playing')return;if(document.pointerLockElement!==canvas){pause();return;}
@@ -145,6 +147,7 @@ function tick(dt){
   projectiles=projectiles.filter(b=>{const result=stepProjectile(b,player,dt);if(result==='player'&&mode==='playing')damage(b.damage,b);return result==='flying';});
   if(mode!=='playing')return;
   tracers=tracers.filter(t=>(t.life-=dt)>0);for(const target of targets)target.flash=Math.max(0,target.flash-dt);
+  const wasRecovering=recovering,beforeRecovery=health;health=recoverHealth(health,lastDamage,elapsed,dt);recovering=health>beforeRecovery;if(recovering||beforeRecovery<100||wasRecovering!==recovering)updateHud();
   meds=meds.filter(m=>{if(Math.hypot(m.x-player.x,m.z-player.z)<1&&health<100){health=Math.min(100,health+28);notify('+28 HEALTH',1.2);tone(700,.2,'sine',.05,1000);updateHud();return false;}return true;});
   if(!enemies.length){if(!waveWait){waveWait=3;projectiles=[];notify(wave===5?'TRAINING COMPLETE':'DRILL CLEARED · REARMING',3);arsenal.ammo=WEAPONS.map(w=>w.capacity);arsenal.reload=0;health=Math.min(100,health+15);updateHud();}waveWait-=dt;if(waveWait<=0){waveWait=0;if(wave===5)finish(true);else spawnWave();}}
 }
@@ -171,7 +174,7 @@ function tickTeams(dt){
     if(e.type==='respawn'&&e.actor===0&&!match.spectator){arsenal=player.arsenal;mouseDown=false;keys.clear();notify('BACK IN · BLUE TEAM',1);}
     if(e.type==='kill'&&e.victim===0&&!match.spectator){mouseDown=false;keys.clear();}
   }
-  match.events.length=0;health=match.spectator?100:player.hp;enemies=match.actors.filter(a=>!a.human&&a.hp>0);
+  match.events.length=0;recovering=!match.spectator&&player.recovering;health=match.spectator?100:player.hp;enemies=match.actors.filter(a=>!a.human&&a.hp>0);
   tracers=tracers.filter(t=>(t.life-=dt)>0);updateHud();
   if(match.ended){
     mode='ended';mouseDown=false;keys.clear();$('end').hidden=false;$('hud').hidden=true;$('tour-controls').hidden=true;
@@ -181,10 +184,23 @@ function tickTeams(dt){
   }
 }
 function drawSprite(e,tex,camera,size=ENEMY_SIZE,base=0,flash=0){const data=[];quad(data,spriteCorners(e,e.yaw??camera.yaw,size,base),[1,1,1],[[0,1],[1,1],[1,0],[0,0]]);bind(spriteBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1f(loc.uFlash,flash);gl.drawArrays(gl.TRIANGLES,0,6);}
+function drawCorpses(camera){
+  const bodies=match?match.corpses:corpses;
+  const remaining=bodies.filter(c=>elapsed-c.diedAt<CORPSE_LIFETIME);
+  if(match)match.corpses=remaining;else corpses=remaining;
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.uniform1f(loc.uSprite,1);gl.uniform1f(loc.uFlash,0);
+  for(const c of [...remaining].sort((a,b)=>Math.hypot(b.x-camera.x,b.z-camera.z)-Math.hypot(a.x-camera.x,a.z-camera.z))){
+    const points=corpseCorners(c,elapsed),data=[];quad(data,points,[.83,.83,.83],[[0,1],[1,1],[1,0],[0,0]]);
+    bind(spriteBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);
+    gl.bindTexture(gl.TEXTURE_2D,actorTextures[c.team===undefined?0:c.team+1][c.variant].dead);
+    gl.uniform1f(loc.uOpacity,corpseOpacity(elapsed-c.diedAt));gl.drawArrays(gl.TRIANGLES,0,6);
+  }
+  gl.uniform1f(loc.uOpacity,1);gl.depthMask(true);gl.disable(gl.BLEND);
+}
 function drawWeapon(){wc.clearRect(0,0,width,height);if(mode==='menu'||mode==='ended'||mode==='spectating'||(match&&player.hp<=0))return;const moving=mode==='playing'&&player.moving;drawPlayerWeapon(wc,width,height,{selected:arsenal.selected,recoil,reload:arsenal.reload,bob:moving?Math.sin(player.walkPhase*Math.PI/4)*4:0,time:now});}
 function drawDecalPlane(d,tex){const c=Math.cos(d.yaw)*d.w/2,s=Math.sin(d.yaw)*d.w/2,data=[];quad(data,[[d.x-c,d.y,d.z-s],[d.x+c,d.y,d.z+s],[d.x+c,d.y+d.h,d.z+s],[d.x-c,d.y+d.h,d.z-s]],[1,1,1],[[0,1],[1,1],[1,0],[0,0]]);bind(spriteBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1f(loc.uFlash,0);gl.drawArrays(gl.TRIANGLES,0,6);}
-function showTour(){document.body.classList.remove('spectating');match=null;mode='tour';document.body.classList.add('previewing');$('menu').hidden=true;$('pause').hidden=true;$('hud').hidden=false;$('tour-controls').hidden=false;$('notice').textContent='';health=100;arsenal=createArsenal();updateHud();}
-function exitTour(){document.body.classList.remove('spectating');match=null;enemies=[];tracers=[];mode='menu';document.body.classList.remove('previewing');$('menu').hidden=false;$('hud').hidden=true;$('tour-controls').hidden=true;}
+function showTour(){corpses=[];recovering=false;document.body.classList.remove('spectating');match=null;mode='tour';document.body.classList.add('previewing');$('menu').hidden=true;$('pause').hidden=true;$('hud').hidden=false;$('tour-controls').hidden=false;$('notice').textContent='';health=100;arsenal=createArsenal();updateHud();}
+function exitTour(){corpses=[];recovering=false;document.body.classList.remove('spectating');match=null;enemies=[];tracers=[];mode='menu';document.body.classList.remove('previewing');$('menu').hidden=false;$('hud').hidden=true;$('tour-controls').hidden=true;}
 function updateKillFeed(){
   const time=match?match.elapsed:elapsed,entries=(match?.feed||drillFeed).filter(e=>time-e.time<7);
   const active=mode!=='menu'&&mode!=='tour';$('kill-feed').hidden=!active||!entries.length;
@@ -201,12 +217,12 @@ function drawMap(camera=player,actors=enemies){const spectator=mode==='spectatin
 function render(time){
   now=time/1000;const dt=Math.min(now-last,.04);last=now;
   if(width!==innerWidth||height!==innerHeight){width=innerWidth;height=innerHeight;canvas.width=Math.round(width*Math.min(devicePixelRatio,1.5));canvas.height=Math.round(height*Math.min(devicePixelRatio,1.5));weaponCanvas.width=width;weaponCanvas.height=height;gl.viewport(0,0,canvas.width,canvas.height);}
-  tick(dt);if(mode==='tour')recoil=Math.max(0,recoil-dt*7);
+  if(mode==='ended')elapsed+=dt;tick(dt);if(mode==='tour')recoil=Math.max(0,recoil-dt*7);
   const views=[{x:2.8,y:1.75,z:12,yaw:-.16,pitch:.04},{x:-12,y:1.75,z:-5,yaw:0,pitch:0},{x:11.5,y:1.75,z:10,yaw:-.18,pitch:.02}];
   const camera=mode==='menu'?{x:8+Math.sin(now*.035),y:2.3,z:13,yaw:-.4,pitch:.03}:mode==='tour'||mode==='spectating'?views[tourView]:player;
   gl.clearColor(.69,.75,.64,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);
   const viewProjection=multiply(perspective(1.18,width/height,.07,110),view(camera));gl.uniformMatrix4fv(loc.uVP,false,viewProjection);
-  gl.uniform1f(loc.uSprite,0);gl.uniform1f(loc.uFlash,0);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);
+  gl.uniform1f(loc.uOpacity,1);gl.uniform1f(loc.uSprite,0);gl.uniform1f(loc.uFlash,0);gl.enable(gl.POLYGON_OFFSET_FILL);gl.polygonOffset(1,1);
   bind(worldBuffer);gl.drawArrays(gl.TRIANGLES,0,geometry.length/8);gl.disable(gl.POLYGON_OFFSET_FILL);
   bind(lineBuffer);gl.lineWidth(1.5);gl.drawArrays(gl.LINES,0,trainingGround.lines.length/8);
   gl.uniform1f(loc.uSprite,1);for(const [i,d] of trainingGround.decals.entries())drawDecalPlane(d,decalTextures[i]);
@@ -222,7 +238,7 @@ function render(time){
   for(const b of projectiles)drawDecalPlane({x:b.x,y:b.y-.1,z:b.z,w:.2,h:.2,yaw:camera.yaw},projectileTexture);
   for(const m of meds)drawSprite(m,medTexture,camera,1.1,.1+Math.sin(now*3)*.1);
   if(tracers.length){const data=[];for(const t of tracers)for(const p of [t.a,t.b])data.push(p.x,p.y,p.z,1,.83,.42,0,0);gl.uniform1f(loc.uSprite,0);gl.uniform1f(loc.uFlash,0);bind(spriteBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.drawArrays(gl.LINES,0,data.length/8);}
-  drawWeapon();if(mode==='playing'||mode==='spectating')drawHitFeedback(wc,feedback,elapsed,viewProjection,camera,width,height);updateKillFeed();if(mode==='playing'||mode==='tour'||mode==='spectating'||mode==='paused'||mode==='locking')drawMap(camera,actors);$('damage').style.opacity=hurt;$('hitmarker').style.opacity=hit>0?1:0;
+  if(mode!=='menu'&&mode!=='tour')drawCorpses(camera);drawWeapon();if(mode==='playing'||mode==='spectating')drawHitFeedback(wc,feedback,elapsed,viewProjection,camera,width,height);updateKillFeed();if(mode==='playing'||mode==='tour'||mode==='spectating'||mode==='paused'||mode==='locking')drawMap(camera,actors);$('damage').style.opacity=(mode==='menu'||mode==='tour'||mode==='spectating'||match?.spectator)?0:damageOpacity(health,hurt);$('hitmarker').style.opacity=hit>0?1:0;
 requestAnimationFrame(render);
 }
 $('start').onclick=begin;$('retry').onclick=begin;$('restart').onclick=begin;$('resume').onclick=lock;$('sound').onclick=()=>{muted=!muted;$('sound').textContent=muted?'SOUND OFF':'SOUND ON';};
