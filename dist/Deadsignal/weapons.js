@@ -1,7 +1,7 @@
 export const WEAPONS=[
-  {name:'FIELD CARBINE',short:'CARBINE',capacity:24,interval:.15,reload:1.5,pellets:1,spread:.004,range:48,automatic:true},
-  {name:'DRILL SHOTGUN',short:'SHOTGUN',capacity:6,interval:.8,reload:1.9,pellets:7,spread:.065,range:19,automatic:false},
-  {name:'SERVICE SIDEARM',short:'SIDEARM',capacity:12,interval:.28,reload:1.1,pellets:1,spread:.002,range:38,automatic:false}
+  {name:'FIELD CARBINE',short:'CARBINE',capacity:24,interval:.15,reload:1.5,pellets:1,damage:25,spread:.004,range:48,automatic:true},
+  {name:'DRILL SHOTGUN',short:'SHOTGUN',capacity:6,interval:.8,reload:1.9,pellets:7,damage:12,spread:.065,range:19,automatic:false},
+  {name:'SERVICE SIDEARM',short:'SIDEARM',capacity:12,interval:.28,reload:1.1,pellets:1,damage:34,spread:.002,range:38,automatic:false}
 ];
 export function createArsenal(){return {selected:0,ammo:WEAPONS.map(w=>w.capacity),cooldown:0,reload:0};}
 export function selectWeapon(a,index){if(index<0||index>=WEAPONS.length||index===a.selected)return false;a.selected=index;a.reload=0;a.cooldown=Math.max(a.cooldown,.2);return true;}

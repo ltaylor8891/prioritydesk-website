@@ -7,8 +7,8 @@ const palettes=[
   {cloth:'#928062',shade:'#72644e',skin:'#ddc9a4',accent:'#cbb584',boots:'#51453b'},
   {cloth:'#526f7e',shade:'#3b5361',skin:'#eee0c4',accent:'#a6bfc0',boots:'#404b50'}
 ];
-export function drawEnemy(ctx,frame=0,variant=0,firing=false){
-  const c=palettes[variant%palettes.length],ink='#141713',step=Math.sin(frame*Math.PI/2),bob=Math.abs(step)*2;
+export function drawEnemy(ctx,frame=0,variant=0,firing=false,team=null){
+  const c={...palettes[variant%palettes.length],...(team===0?{cloth:'#5285a3',shade:'#375b75',accent:'#9dd4ec'}:team===1?{cloth:'#c1844e',shade:'#8c5639',accent:'#ffd39a'}:{})},ink='#141713',step=Math.sin(frame*Math.PI/2),bob=Math.abs(step)*2;
   ctx.save();ctx.lineJoin='round';ctx.lineCap='round';ctx.lineWidth=9;ctx.strokeStyle=ink;
   const shape=(d,fill,stroke=ink,width=9)=>{const p=new Path2D(d);ctx.fillStyle=fill;if(fill)ctx.fill(p);if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke(p);}};
   const oval=(x,y,rx,ry,fill,stroke=ink,width=9)=>{ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}};
