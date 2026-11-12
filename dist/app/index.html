@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Priority Desk</title>
+  <meta name="description" content="Priority Desk tasks and reminders, synced through your own OneDrive." />
+  <meta name="theme-color" content="#F3F2F2" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1C1B1B" media="(prefers-color-scheme: dark)" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Priority Desk" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="manifest" href="/app/manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="/app/icon.svg" />
+  <link rel="apple-touch-icon" href="/app/apple-touch-icon.png" />
+  <script type="module" crossorigin src="/app/assets/index-D73mFk1k.js"></script>
+  <link rel="stylesheet" crossorigin href="/app/assets/index-tealhhJ8.css">
+</head>
+<body>
+  <div id="app">
+    <header class="top">
+      <h1 class="brand">Priority <span>Desk</span></h1>
+      <a class="link-button review-link" id="review-link" role="button" tabindex="0" hidden></a>
+      <div class="actions">
+        <button class="text-button" data-action="toggle-search" id="btn-search">Search</button>
+        <button class="text-button" data-action="projects">Projects</button>
+        <button class="text-button menu-button" data-action="menu" aria-label="Menu" aria-haspopup="menu">⋮</button>
+      </div>
+    </header>
+    <div id="menu" class="menu" role="menu" hidden></div>
+    <div id="banners"></div>
+    <nav id="chips" class="chips" aria-label="Views"></nav>
+    <div class="project-row"><select id="project-filter" aria-label="Project"></select></div>
+    <section id="search" class="search" hidden>
+      <input id="search-text" type="search" placeholder="Search titles, notes, projects and files" autocomplete="off" />
+      <div id="search-priorities" class="chips"></div>
+    </section>
+    <main id="list" class="list" aria-live="polite"></main>
+    <form id="addbar" class="addbar" autocomplete="off">
+      <button type="button" class="addbar-toggle" data-action="toggle-add" id="add-toggle" aria-expanded="true">+ Add a task <span>▴</span></button>
+      <div class="addbar-fields" id="add-fields">
+        <select id="add-project" aria-label="Project for the new task"></select>
+        <input id="add-title" type="text" placeholder="Add a task" enterkeyhint="done" />
+        <button type="submit" class="primary">Add</button>
+      </div>
+    </form>
+  </div>
+  <dialog id="dialog" class="sheet"></dialog>
+  <dialog id="confirm" class="alert"></dialog>
+</body>
+</html>

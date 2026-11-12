@@ -29,6 +29,12 @@ GitHub Pages publishes `dist` through `.github/workflows/pages.yml` whenever web
 
 See [DOMAIN-SETUP.md](DOMAIN-SETUP.md) for the exact IONOS DNS records and steps for connecting `prioritydesk.co.uk` and enabling HTTPS.
 
+## Priority Desk web app
+
+The iPhone and browser version of Priority Desk is hosted at https://prioritydesk.co.uk/app/ (the sign-in redirect registered in Microsoft Entra is exactly `https://prioritydesk.co.uk/app/`). It is a static bundle in `dist/app/` that syncs through the visitor's own OneDrive; the website holds none of their data.
+
+Source: `web/` in the Priority Desk app repository. To update it, run `MSYS_NO_PATHCONV=1 npx vite build --base=/app/` in `web/` (in Git Bash; in PowerShell `npx vite build --base=/app/`), replace the contents of `dist/app/` with the new `dist`, and commit and push to `main`. Keep other website folders intact.
+
 ## LockTied support pages
 
 The LockTied Android app is also developed by Taynium. Its standalone support pages are hosted under the existing custom domain:
