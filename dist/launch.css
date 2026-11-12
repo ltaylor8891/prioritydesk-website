@@ -38,7 +38,15 @@
 .phone-gallery figcaption span { display: block; font-size: 8px; letter-spacing: 1.2px; margin-bottom: 8px; }
 .gallery-note { color: var(--muted); font-size: 11px; margin-top: 17px; }
 .download-section { background: #ece7dd; border-block: 1px solid #dbd5c8; }
-.download-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.download-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.brand-icon { width: 18px; height: 18px; flex: none; margin-right: 10px; vertical-align: -3px; }
+.store-link { display: inline-flex; align-items: center; }
+.platform-icon { width: 34px; height: 34px; margin-bottom: 4px; }
+.steps { padding-left: 1.3em; display: grid; gap: 10px; margin: 14px 0; }
+.steps li { padding-left: 4px; }
+.policy ol.steps, .policy ul.steps { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.policy .button { margin-bottom: 28px; }
+@media (max-width: 1100px) and (min-width: 781px) { .download-grid { grid-template-columns: 1fr; } }
 .download-card { padding: 32px; background: var(--bg); border: 1px solid #d8d4c8; display: flex; flex-direction: column; align-items: flex-start; }
 .download-card h3 { font-size: 25px; letter-spacing: -.8px; margin: 23px 0 14px; }
 .download-card > p { font-size: 14px; color: var(--muted); }
