@@ -1,5 +1,5 @@
-import {Client} from './colyseus-client.js?v=permanent-1';
-import {NETWORK_VERSION,reconcilePlayer} from './network-motion.js?v=permanent-1';
+import {Client} from './colyseus-client.js?v=permanent-2';
+import {NETWORK_VERSION,reconcilePlayer} from './network-motion.js?v=permanent-2';
 
 export function serverAddress(value){
   const url=new URL(value);
@@ -27,9 +27,13 @@ export class NetworkGame{
     this.timer=setInterval(()=>{if(!this.closed)room.send('ping',performance.now());},2000);
     room.send('ready');
   }
-  static async connect({address,name,code,team=null,onSnapshot,onDisconnect}){
-    const client=new Client(serverAddress(address)),options={name,team,version:NETWORK_VERSION};
-    const room=code?await client.joinById(code.trim().toUpperCase(),options):await client.create('training',options);
+  static async connect({address,fallbackAddress=null,name,code,team=null,onSnapshot,onDisconnect}){
+    const options={name,team,version:NETWORK_VERSION};
+    const enter=async endpoint=>{
+      const client=new Client(serverAddress(endpoint));
+      return code?await client.joinById(code.trim().toUpperCase(),options):await client.create('training',options);
+    };
+    let room;try{room=await enter(address);}catch(error){if(!fallbackAddress)throw error;room=await enter(fallbackAddress);}
     return new NetworkGame(room,onSnapshot,onDisconnect);
   }
   send(input){

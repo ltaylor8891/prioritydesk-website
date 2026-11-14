@@ -1,8 +1,8 @@
-import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=permanent-1';
-import {makeCorpse,CORPSE_LIFETIME,recoverHealth} from './life-effects.js?v=permanent-1';
-import {blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=permanent-1';
-import {WEAPONS,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=permanent-1';
-import {raySphere} from './combat.js?v=permanent-1';
+import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=permanent-2';
+import {makeCorpse,CORPSE_LIFETIME,recoverHealth} from './life-effects.js?v=permanent-2';
+import {blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=permanent-2';
+import {WEAPONS,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=permanent-2';
+import {raySphere} from './combat.js?v=permanent-2';
 
 export const MATCH_RULES={teamSize:4,scoreLimit:30,timeLimit:300,respawn:3,protection:1.5};
 export const TEAM_NAMES=['BLUE','ORANGE'];

@@ -1,5 +1,5 @@
-import {clamp,move} from './core.js?v=permanent-1';
-import {updateWalk} from './actor-motion.js?v=permanent-1';
+import {clamp,move} from './core.js?v=permanent-2';
+import {updateWalk} from './actor-motion.js?v=permanent-2';
 
 export const NETWORK_VERSION=2;
 export const INPUT_DT=1/30;

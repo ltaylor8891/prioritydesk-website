@@ -1,17 +1,17 @@
-import {makeCorpse,corpseCorners,corpseOpacity,CORPSE_LIFETIME,recoverHealth,damageOpacity} from './life-effects.js?v=permanent-1';
-import {createHitFeedback,recordHit,clearActorFeedback,drawHitFeedback} from './hit-feedback.js?v=permanent-1';
-import {WALK_FRAMES,walkFrame,updateWalk,turnActor,headingTo,showsBack} from './actor-motion.js?v=permanent-1';
-import {drawMinimap} from './minimap.js?v=permanent-1';
-import {clamp,cover,walls,blocked,move,wallDistance,visible,flowField,nextStep,ENEMY_SIZE,spriteCorners,raySprite} from './core.js?v=permanent-1';
-import {drawEnemy,CHARACTER_WIDTH,CHARACTER_HEIGHT} from './enemy-art.js?v=permanent-1';
-import {WEAPONS,createArsenal,selectWeapon,startReload,stepWeapon,fireWeapon,drawPlayerWeapon} from './weapons.js?v=permanent-1';
-import {readyEnemyShot,stepProjectile,ENEMY_GUNS,enemyVolley} from './combat.js?v=permanent-1';
-import {buildTrainingGround,drawDecal,drawTarget,TRAINING_TARGETS} from './training-ground.js?v=permanent-1';
+import {makeCorpse,corpseCorners,corpseOpacity,CORPSE_LIFETIME,recoverHealth,damageOpacity} from './life-effects.js?v=permanent-2';
+import {createHitFeedback,recordHit,clearActorFeedback,drawHitFeedback} from './hit-feedback.js?v=permanent-2';
+import {WALK_FRAMES,walkFrame,updateWalk,turnActor,headingTo,showsBack} from './actor-motion.js?v=permanent-2';
+import {drawMinimap} from './minimap.js?v=permanent-2';
+import {clamp,cover,walls,blocked,move,wallDistance,visible,flowField,nextStep,ENEMY_SIZE,spriteCorners,raySprite} from './core.js?v=permanent-2';
+import {drawEnemy,CHARACTER_WIDTH,CHARACTER_HEIGHT} from './enemy-art.js?v=permanent-2';
+import {WEAPONS,createArsenal,selectWeapon,startReload,stepWeapon,fireWeapon,drawPlayerWeapon} from './weapons.js?v=permanent-2';
+import {readyEnemyShot,stepProjectile,ENEMY_GUNS,enemyVolley} from './combat.js?v=permanent-2';
+import {buildTrainingGround,drawDecal,drawTarget,TRAINING_TARGETS} from './training-ground.js?v=permanent-2';
 import {mouseDelta} from './mouse-look.js';
 import {createPointerLock} from './pointer-lock.js';
-import {createMatch,tickMatch,fireMatchWeapon,MATCH_RULES,TEAM_NAMES,TEAM_COLORS} from './team-match.js?v=permanent-1';
-import {INPUT_DT,moveFromInput} from './network-motion.js?v=permanent-1';
-import {NetworkGame} from './network-client.js?v=permanent-1';
+import {createMatch,tickMatch,fireMatchWeapon,MATCH_RULES,TEAM_NAMES,TEAM_COLORS} from './team-match.js?v=permanent-2';
+import {INPUT_DT,moveFromInput} from './network-motion.js?v=permanent-2';
+import {NetworkGame} from './network-client.js?v=permanent-2';
 const $=id=>document.getElementById(id),canvas=$('world'),gl=canvas.getContext('webgl',{antialias:true,alpha:false});
 if(!gl){$('unsupported').hidden=false;throw new Error('WebGL unavailable');}
 const vertex=`attribute vec3 aPos;attribute vec3 aColor;attribute vec2 aUV;uniform mat4 uVP;varying vec3 vColor;varying vec2 vUV;varying float vDepth;void main(){gl_Position=uVP*vec4(aPos,1.0);vColor=aColor;vUV=aUV;vDepth=gl_Position.w;}`;
@@ -44,7 +44,7 @@ const weaponCanvas=$('weapon'),wc=weaponCanvas.getContext('2d'),map=$('map').get
 let arsenal=createArsenal(),projectiles=[],tracers=[],targets=TRAINING_TARGETS.map(t=>({...t,flash:0})),targetHits=0,tourView=0;
 let width=0,height=0,now=0,last=0,mode='menu',wave=0,enemies=[],meds=[],kills=0,health=100,recoil=0,hurt=0,hit=0,noticeTime=0,waveWait=0,flow=new Map(),flowTimer=0,elapsed=0,muted=false,audio=null,mouseDown=false;
 let match=null,selectedMode='teams',feedback=createHitFeedback(),drillFeed=[],feedStamp='',corpses=[],lastDamage=-Infinity,recovering=false;
-let network=null,networkAttempt=0,networkAccumulator=0,networkWeapon=0,firePulse=false,reloadPulse=false,remoteTargets=[],onlineSetupStamp='';
+let network=null,networkAttempt=0,networkAccumulator=0,networkWeapon=0,firePulse=false,reloadPulse=false,remoteTargets=[],onlineSetupStamp='',connectionConfig=null;
 const keys=new Set();let player={x:0,y:1.65,z:12,yaw:0,pitch:0};
 const pointerCapture=createPointerLock(canvas,document,captureState);
 function perspective(fov,aspect,near,far){const f=1/Math.tan(fov/2),nf=1/(near-far);return [f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,2*far*near*nf,0];}
@@ -223,7 +223,9 @@ async function connectOnline(join){
   const attempt=++networkAttempt;$('create-room').disabled=true;$('join-room').disabled=true;
   $('online-message').textContent='Connecting to the match server…';
   try{
-    const game=await NetworkGame.connect({address:$('server-address').value.trim(),name:$('player-name').value,code,team:$('join-team').value==='auto'?null:Number($('join-team').value),
+    const address=$('server-address').value.trim();
+    const fallbackAddress=address===connectionConfig?.server&&Date.now()<Date.parse(connectionConfig?.fallbackExpiresAt)?connectionConfig.fallbackServer:null;
+    const game=await NetworkGame.connect({address,fallbackAddress,name:$('player-name').value,code,team:$('join-team').value==='auto'?null:Number($('join-team').value),
       onSnapshot:data=>{if(network&&attempt===networkAttempt)receiveOnline(data);},
       onDisconnect:()=>{if(network&&attempt===networkAttempt){leaveOnline();openOnline();$('online-message').textContent='Connection lost. Your slot is now a bot. Join the room again to return.';}}});
     if(attempt!==networkAttempt){game.leave();return;}
@@ -407,7 +409,7 @@ addEventListener('pagehide',()=>network?.leave());
 
 fetch(new URL('multiplayer-config.json',location.href),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(config=>{
   if(config?.sameOrigin)$('server-address').value=location.origin.replace(/^http/,'ws');
-  else if(config?.server)$('server-address').value=config.server;
+  else if(config?.server){connectionConfig=config;$('server-address').value=config.server;}
 }).catch(()=>{});
 const invitedRoom=new URL(location.href).searchParams.get('room');
 if(invitedRoom&&/^[A-Fa-f0-9]{8}$/.test(invitedRoom)){$('room-code').value=invitedRoom.toUpperCase();openOnline();}
