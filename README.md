@@ -86,3 +86,5 @@ Dead Signal field build 004 adds distance-driven walking, matching body/aim rota
 Dead Signal field build 005 adds floating confirmed-damage totals, overhead health bars that expire after one second, and a bottom elimination feed naming the attacker, weapon and victim.
 
 Dead Signal field build 006 adds animated collapses, bodies held on the floor for two seconds before fading, damage-scaled red screen shading, and delayed automatic health recovery.
+
+Dead Signal multiplayer build: private room codes, host AI settings, team selection and swaps. The game remains at /Deadsignal/ and uses wss://play.prioritydesk.co.uk for matches.

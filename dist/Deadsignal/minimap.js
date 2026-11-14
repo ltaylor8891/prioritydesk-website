@@ -1,5 +1,5 @@
-import {cover,walls,visible} from './core.js?v=recovery-1';
-import {angleDifference,headingTo} from './actor-motion.js?v=recovery-1';
+import {cover,walls,visible} from './core.js?v=permanent-1';
+import {angleDifference,headingTo} from './actor-motion.js?v=permanent-1';
 const COLORS=['#73c5ef','#ffae67'];
 export function mapActors(actors,viewer,{spectator=false,preview=false}={}){
   return actors.filter(a=>a.hp!==0&&(spectator||preview||(viewer.team!==undefined&&a.team===viewer.team)||

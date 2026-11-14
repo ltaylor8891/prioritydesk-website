@@ -1,8 +1,8 @@
-import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=recovery-1';
-import {makeCorpse,CORPSE_LIFETIME,recoverHealth} from './life-effects.js?v=recovery-1';
-import {blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=recovery-1';
-import {WEAPONS,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=recovery-1';
-import {raySphere} from './combat.js?v=recovery-1';
+import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=permanent-1';
+import {makeCorpse,CORPSE_LIFETIME,recoverHealth} from './life-effects.js?v=permanent-1';
+import {blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=permanent-1';
+import {WEAPONS,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=permanent-1';
+import {raySphere} from './combat.js?v=permanent-1';
 
 export const MATCH_RULES={teamSize:4,scoreLimit:30,timeLimit:300,respawn:3,protection:1.5};
 export const TEAM_NAMES=['BLUE','ORANGE'];
@@ -97,7 +97,7 @@ export function fireMatchWeapon(match,shooter,yaw,pitch=0,extraSpread=0){
     let near=Math.min(w.range,wallDistance(origin,dir)),victim=null;
     for(const other of match.actors){
       if(other===shooter||other.hp<=0)continue;
-      const d=other.human?raySphere(origin,dir,{x:other.x,y:1.25,z:other.z},.62):raySprite(origin,dir,other,ENEMY_SIZE,0);
+      const d=other.human&&!match.network?raySphere(origin,dir,{x:other.x,y:1.25,z:other.z},.62):raySprite(origin,dir,other.human?{...other,yaw:other.yaw+Math.PI}:other,ENEMY_SIZE,0);
       if(d<near){near=d;victim=other;}
     }
     if(victim)applyDamage(match,victim,shooter,w.damage);
@@ -195,6 +195,7 @@ export function tickMatch(match,dt){
   if(match.ended)return;
   match.elapsed+=dt;
   for(const a of match.actors){
+    if(a.disabled)continue;
     a.flash=Math.max(0,a.flash-dt);a.fire=Math.max(0,a.fire-dt);a.protection=Math.max(0,a.protection-dt);
     if(a.hp<=0){a.respawn=Math.max(0,a.respawn-dt);if(a.respawn===0)respawnActor(match,a);continue;}
     const before=a.hp;a.hp=recoverHealth(a.hp,a.lastDamage,match.elapsed,dt,a.maxHp);a.recovering=a.hp>before;
