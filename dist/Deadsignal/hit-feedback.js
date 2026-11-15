@@ -11,7 +11,7 @@ export function recordHit(feedback,actor,amount,time,{shooter=0,position=actor}=
   const last=feedback.numbers.findLast(n=>n.key===key&&n.shooter===shooter&&time-n.time<.06);
   if(last){last.amount+=amount;last.lethal=actor.hp<=0;}
   else{
-    feedback.numbers.push({key,shooter,amount,time,x:position.x,z:position.z,y:1.9,
+    feedback.numbers.push({key,shooter,amount,time,x:position.x,z:position.z,y:1.9+(position.fy||0),
       drift:((feedback.serial++%3)-1)*.15,lethal:actor.hp<=0});
     if(feedback.numbers.length>64)feedback.numbers.shift();
   }
@@ -28,14 +28,14 @@ export function projectWorld(matrix,p,width,height){
   return {x:(clip[0]/w*.5+.5)*width,y:(.5-clip[1]/w*.5)*height,depth:w};
 }
 export function feedbackVisible(camera,position){
-  const dx=position.x-camera.x,dy=1.35-camera.y,dz=position.z-camera.z,d=Math.hypot(dx,dy,dz);
+  const dx=position.x-camera.x,dy=(position.fy||0)+1.35-camera.y,dz=position.z-camera.z,d=Math.hypot(dx,dy,dz);
   return d>.15&&wallDistance(camera,{x:dx/d,y:dy/d,z:dz/d})>=d-.05;
 }
 export function drawHitFeedback(ctx,feedback,time,matrix,camera,width,height){
   pruneFeedback(feedback,time);ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
   for(const {actor,time:hitTime} of feedback.bars.values()){
     if(!feedbackVisible(camera,actor))continue;
-    const p=projectWorld(matrix,{x:actor.x,y:2.92,z:actor.z},width,height);if(!p)continue;
+    const p=projectWorld(matrix,{x:actor.x,y:(actor.fy||0)+2.92,z:actor.z},width,height);if(!p)continue;
     const w=clamp(650/p.depth,42,86),h=7,ratio=clamp(actor.hp/(actor.maxHp??100),0,1);
     ctx.globalAlpha=healthBarOpacity(time-hitTime);ctx.fillStyle='#14231ef2';ctx.strokeStyle='#f6e6bd';ctx.lineWidth=1.5;
     ctx.fillRect(p.x-w/2-2,p.y-h/2-2,w+4,h+4);ctx.strokeRect(p.x-w/2-2,p.y-h/2-2,w+4,h+4);

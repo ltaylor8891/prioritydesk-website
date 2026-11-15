@@ -4,7 +4,7 @@ export const DEATH_TIMING={fall:.45,hold:2,fade:.65};
 export const CORPSE_LIFETIME=DEATH_TIMING.fall+DEATH_TIMING.hold+DEATH_TIMING.fade;
 export const RECOVERY={delay:3,perSecond:10};
 export function makeCorpse(actor,time){
-  return {x:actor.x,z:actor.z,yaw:actor.human?actor.yaw+Math.PI:actor.yaw,
+  return {x:actor.x,z:actor.z,fy:actor.fy||0,yaw:actor.human?actor.yaw+Math.PI:actor.yaw,
     heading:actor.human?actor.yaw:actor.heading,variant:actor.variant??0,team:actor.team,diedAt:time};
 }
 export function corpseOpacity(age){return age<0?0:age<=DEATH_TIMING.fall+DEATH_TIMING.hold?1:clamp((CORPSE_LIFETIME-age)/DEATH_TIMING.fade,0,1);}
@@ -13,7 +13,7 @@ export function corpseCorners(corpse,time){
   const yaw=corpse.yaw,c=Math.cos(yaw),s=Math.sin(yaw),half=ENEMY_SIZE*.34;
   // The feet stay planted while the flat character falls backwards, face up.
   const up={x:s*Math.sin(angle)*ENEMY_SIZE,y:Math.cos(angle)*ENEMY_SIZE,z:-c*Math.sin(angle)*ENEMY_SIZE};
-  const floor=.045;
+  const floor=.045+(corpse.fy||0);
   return [[corpse.x-c*half,floor,corpse.z-s*half],[corpse.x+c*half,floor,corpse.z+s*half],
     [corpse.x+c*half+up.x,floor+up.y,corpse.z+s*half+up.z],[corpse.x-c*half+up.x,floor+up.y,corpse.z-s*half+up.z]];
 }

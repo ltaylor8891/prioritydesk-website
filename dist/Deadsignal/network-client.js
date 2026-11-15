@@ -27,8 +27,8 @@ export class NetworkGame{
     this.timer=setInterval(()=>{if(!this.closed)room.send('ping',performance.now());},2000);
     room.send('ready');
   }
-  static async connect({address,fallbackAddress=null,name,code,team=null,onSnapshot,onDisconnect}){
-    const options={name,team,version:NETWORK_VERSION};
+  static async connect({address,fallbackAddress=null,name,avatar=0,loadout=null,code,team=null,mode='tdm',map='camp',onSnapshot,onDisconnect}){
+    const options={name,team,avatar,loadout,mode,map,version:NETWORK_VERSION};
     const enter=async endpoint=>{
       const client=new Client(serverAddress(endpoint));
       return code?await client.joinById(code.trim().toUpperCase(),options):await client.create('training',options);
@@ -47,6 +47,7 @@ export class NetworkGame{
   stop(){if(!this.closed)this.room.send('stop');this.pending=[];}
   start(){if(!this.closed)this.room.send('start');}
   chooseTeam(team){if(!this.closed)this.room.send('team',team);}
+  setLoadout(loadout){if(!this.closed)this.room.send('loadout',loadout);}
   setAi(enabled){if(!this.closed)this.room.send('ai',enabled);}
   leave(){this.closed=true;clearInterval(this.timer);return this.room.leave();}
 }

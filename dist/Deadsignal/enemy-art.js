@@ -7,6 +7,8 @@ const palettes=[
   {cloth:'#928062',shade:'#72644e',skin:'#ddc9a4',accent:'#cbb584',boots:'#51453b'},
   {cloth:'#526f7e',shade:'#3b5361',skin:'#eee0c4',accent:'#a6bfc0',boots:'#404b50'}
 ];
+export const AVATAR_COUNT=palettes.length;
+export function avatarColors(variant=0,team=null){return {...palettes[variant%palettes.length],...(team===0?{cloth:'#5285a3',shade:'#375b75',accent:'#9dd4ec'}:team===1?{cloth:'#c1844e',shade:'#8c5639',accent:'#ffd39a'}:{})};}
 export function drawEnemy(ctx,frame=0,variant=0,firing=false,team=null,back=false,dead=false){
   const c={...palettes[variant%palettes.length],...(team===0?{cloth:'#5285a3',shade:'#375b75',accent:'#9dd4ec'}:team===1?{cloth:'#c1844e',shade:'#8c5639',accent:'#ffd39a'}:{})},ink='#141713',step=Math.sin(frame*Math.PI/4),bob=Math.abs(step)*5;
   ctx.save();ctx.lineJoin='round';ctx.lineCap='round';ctx.lineWidth=9;ctx.strokeStyle=ink;
