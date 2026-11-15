@@ -1,9 +1,9 @@
-import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=permanent-2';
-import {makeCorpse,CORPSE_LIFETIME,recoverHealth} from './life-effects.js?v=permanent-2';
-import {world,groundAt,walkableLine,blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=permanent-2';
-import {WEAPONS,aimSpread,bloomSpread,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=permanent-2';
-import {raySphere} from './combat.js?v=permanent-2';
-import {createGrenade,stepGrenade,flashStrength,flashDurations,inFieldOfView,actorEye,clearLine,isBlind,fragDamageAt,GRENADE,createCloud,smokeBlocks} from './grenades.js?v=permanent-2';
+import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=permanent-3';
+import {makeCorpse,CORPSE_LIFETIME,recoverHealth} from './life-effects.js?v=permanent-3';
+import {world,groundAt,walkableLine,blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=permanent-3';
+import {WEAPONS,aimSpread,bloomSpread,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=permanent-3';
+import {raySphere} from './combat.js?v=permanent-3';
+import {createGrenade,stepGrenade,flashStrength,flashDurations,inFieldOfView,actorEye,clearLine,isBlind,fragDamageAt,GRENADE,createCloud,smokeBlocks} from './grenades.js?v=permanent-3';
 
 export const MATCH_RULES={teamSize:4,scoreLimit:30,timeLimit:300,respawn:3,protection:1.5};
 // tdm: two squads to 30. ffa: eight players, everyone is an enemy, first to 20. ctf: hold flag circles.

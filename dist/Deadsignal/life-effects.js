@@ -1,4 +1,4 @@
-import {clamp,ENEMY_SIZE} from './core.js?v=permanent-2';
+import {clamp,ENEMY_SIZE} from './core.js?v=permanent-3';
 
 export const DEATH_TIMING={fall:.45,hold:2,fade:.65};
 export const CORPSE_LIFETIME=DEATH_TIMING.fall+DEATH_TIMING.hold+DEATH_TIMING.fade;

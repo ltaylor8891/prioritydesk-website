@@ -1,5 +1,5 @@
-import {Client} from './colyseus-client.js?v=permanent-2';
-import {NETWORK_VERSION,reconcilePlayer} from './network-motion.js?v=permanent-2';
+import {Client} from './colyseus-client.js?v=permanent-3';
+import {NETWORK_VERSION,reconcilePlayer} from './network-motion.js?v=permanent-3';
 
 export function serverAddress(value){
   const url=new URL(value);

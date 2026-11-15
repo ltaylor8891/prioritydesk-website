@@ -1,4 +1,4 @@
-import {clamp,wallDistance} from './core.js?v=permanent-2';
+import {clamp,wallDistance} from './core.js?v=permanent-3';
 
 export const HEALTH_BAR_SECONDS=1;
 export const DAMAGE_NUMBER_SECONDS=.9;

@@ -1,5 +1,5 @@
-import {cover,walls,world,visible,features,ladders} from './core.js?v=permanent-2';
-import {angleDifference,headingTo} from './actor-motion.js?v=permanent-2';
+import {cover,walls,world,visible,features,ladders} from './core.js?v=permanent-3';
+import {angleDifference,headingTo} from './actor-motion.js?v=permanent-3';
 const COLORS=['#73c5ef','#ffae67'];
 export function mapActors(actors,viewer,{spectator=false,preview=false,ffa=false}={}){
   return actors.filter(a=>a.hp!==0&&(spectator||preview||(!ffa&&viewer.team!==undefined&&a.team===viewer.team)||
