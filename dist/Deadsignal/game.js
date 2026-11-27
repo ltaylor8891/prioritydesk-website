@@ -20,6 +20,8 @@ import {createMatch,tickMatch,fireMatchWeapon,flagCounts,MODES,CAPTURE_SECONDS,F
 import {INPUT_DT,moveFromInput} from './network-motion.js?v=accounts-1';
 import {NetworkGame} from './network-client.js?v=accounts-1';
 import {cancelQueue} from './player-hub.js?v=accounts-1';
+const bootStage=async(progress,message)=>{window.dispatchEvent(new CustomEvent('dead-signal-boot',{detail:{progress,message}}));await new Promise(resolve=>setTimeout(resolve,0));};
+await bootStage(30,'Preparing the renderer…');
 const $=id=>document.getElementById(id),canvas=$('world'),gl=canvas.getContext('webgl',{antialias:true,alpha:false});
 if(!gl){$('unsupported').hidden=false;throw new Error('WebGL unavailable');}
 const vertex=`attribute vec3 aPos;attribute vec3 aColor;attribute vec2 aUV;uniform mat4 uVP;varying vec3 vColor;varying vec2 vUV;varying float vDepth;void main(){gl_Position=uVP*vec4(aPos,1.0);vColor=aColor;vUV=aUV;vDepth=gl_Position.w;}`;
@@ -33,18 +35,22 @@ function quad(out,points,color,uv=[[0,0],[1,0],[1,1],[0,1]]){for(const i of [0,1
 function box(out,x,y,z,w,h,d,c){const a=x-w/2,b=x+w/2,l=z-d/2,r=z+d/2,t=y+h;quad(out,[[a,y,r],[b,y,r],[b,t,r],[a,t,r]],c.map(v=>v*.8));quad(out,[[b,y,l],[a,y,l],[a,t,l],[b,t,l]],c.map(v=>v*.6));quad(out,[[a,y,l],[a,y,r],[a,t,r],[a,t,l]],c.map(v=>v*.65));quad(out,[[b,y,r],[b,y,l],[b,t,l],[b,t,r]],c.map(v=>v*.9));quad(out,[[a,t,r],[b,t,r],[b,t,l],[a,t,l]],c);quad(out,[[a,y,l],[b,y,l],[b,y,r],[a,y,r]],c.map(v=>v*.5));}
 const staticBuffer=data=>{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);return b;};
 const makeScene=s=>({...s,worldBuffer:staticBuffer(s.geometry),lineBuffer:staticBuffer(s.lines)});
+await bootStage(40,'Building all three battlefields…');
 const scenes={camp:makeScene(buildTrainingGround(box,quad)),town:makeScene(buildTown(box,quad)),war:makeScene(buildWar(box,quad))},worlds={camp:CAMP_WORLD,town:TOWN_WORLD,war:WAR_WORLD};
 let scene=scenes.camp,selectedMap='camp';
 const DEFAULT_FOG={start:14,range:65,max:.82,color:[.69,.75,.64]};
 try{const m=localStorage.getItem('dead-signal-map');if(m==='town'||m==='war')selectedMap=m;}catch{}
 const spriteBuffer=gl.createBuffer();
 function texture(draw,width=32,height=48,smooth=false){const c=document.createElement('canvas');c.width=width;c.height=height;const ctx=c.getContext('2d');draw(ctx);const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,c);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,smooth?gl.LINEAR:gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,smooth?gl.LINEAR:gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return tex;}
-const actorTextures=[null,0,1].map(team=>[0,1,2].map(variant=>({
+await bootStage(55,'Drawing characters and their animations…');
+const actorTextures=[];
+for(const team of [null,0,1]){const variants=[];for(const variant of [0,1,2]){variants.push({
   front:Array.from({length:WALK_FRAMES},(_,frame)=>texture(c=>drawEnemy(c,frame,variant,false,team),CHARACTER_WIDTH,CHARACTER_HEIGHT,true)),
   back:Array.from({length:WALK_FRAMES},(_,frame)=>texture(c=>drawEnemy(c,frame,variant,false,team,true),CHARACTER_WIDTH,CHARACTER_HEIGHT,true)),
   dead:texture(c=>drawEnemy(c,0,variant,false,team,false,true),CHARACTER_WIDTH,CHARACTER_HEIGHT,true),
   fire:Array.from({length:WALK_FRAMES},(_,frame)=>texture(c=>drawEnemy(c,frame,variant,true,team),CHARACTER_WIDTH,CHARACTER_HEIGHT,true))
-})));
+});await new Promise(resolve=>setTimeout(resolve,0));}actorTextures.push(variants);}
+await bootStage(72,'Preparing weapons, effects and map details…');
 const teamMarkers=TEAM_COLORS.map((color,i)=>texture(c=>{c.fillStyle=color;c.strokeStyle='#17241f';c.lineWidth=6;c.fillRect(3,3,122,42);c.strokeRect(3,3,122,42);c.fillStyle='#17241f';c.font='bold 21px Arial';c.textAlign='center';c.fillText(TEAM_NAMES[i],64,32);},128,48,true));
 const targetTextures=[false,true].map(hit=>texture(c=>drawTarget(c,hit),128,192,true));
 const warningTexture=texture(c=>{c.fillStyle='#ffd66b';c.strokeStyle='#20291d';c.lineWidth=5;c.beginPath();c.moveTo(32,3);c.lineTo(61,57);c.lineTo(3,57);c.closePath();c.fill();c.stroke();c.fillStyle='#20291d';c.font='bold 38px Arial';c.textAlign='center';c.fillText('!',32,47);},64,64,true);
@@ -530,6 +536,7 @@ function updateKillFeed(){
 }
 function drawMap(camera=player,actors=enemies){const spectator=mode==='spectating',preview=mode==='tour';drawMinimap(map,camera,actors,{spectator,preview,meds,targets:world.id==='camp'?targets:[],ffa:match?.mode==='ffa',zones:match?.zones||[]});$('map-caption').textContent=spectator?'ALL TEAMS · NORTH UP':preview?'GROUND PLAN · NORTH UP':'VISIBLE ENEMIES · NORTH UP';}
 function render(time){
+  if(document.body.dataset.bootFailed)return;
   now=time/1000;const dt=Math.min(now-last,.04);last=now;
   if(width!==innerWidth||height!==innerHeight){width=innerWidth;height=innerHeight;canvas.width=Math.round(width*Math.min(devicePixelRatio,1.5));canvas.height=Math.round(height*Math.min(devicePixelRatio,1.5));weaponCanvas.width=width;weaponCanvas.height=height;gl.viewport(0,0,canvas.width,canvas.height);}
   if(mode==='ended')elapsed+=dt;tick(dt);if(mode==='tour')recoil=Math.max(0,recoil-dt*7);
@@ -646,9 +653,15 @@ try{$('player-name').value=localStorage.getItem('dead-signal-name')||'Recruit';$
 addEventListener('pagehide',()=>network?.leave());
 addEventListener('beforeunload',e=>{if(mode==='playing'||mode==='paused'||mode==='locking'){e.preventDefault();e.returnValue='';}});
 
-fetch(new URL('multiplayer-config.json',location.href),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(config=>{
+await bootStage(90,'Loading connection settings…');
+await fetch(new URL('multiplayer-config.json',location.href),{cache:'no-store',signal:AbortSignal.timeout(10000)}).then(r=>{if(!r.ok)throw new Error('Connection settings could not load.');return r.json();}).then(config=>{
   if(config?.sameOrigin)$('server-address').value=location.origin.replace(/^http/,'ws');
   else if(config?.server){connectionConfig=config;$('server-address').value=config.server;}
-}).catch(()=>{});
+});
+await document.fonts.ready;
+await bootStage(96,'Rendering the first frame…');
+await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+gl.finish();
+if(gl.isContextLost())throw new Error('Graphics context was lost. Reload to try again.');
 const invitedRoom=new URL(location.href).searchParams.get('room');
 if(invitedRoom&&/^[A-Fa-f0-9]{8}$/.test(invitedRoom)){$('room-code').value=invitedRoom.toUpperCase();openOnline();}

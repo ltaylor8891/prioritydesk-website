@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111d20"><title>Dead Signal — A sprite-world shooter</title><link rel="stylesheet" href="style.css?v=loadout-1"></head>
-<body>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111d20"><title>Dead Signal — A sprite-world shooter</title><link rel="stylesheet" href="style.css?v=intro-1"></head>
+<body class="booting">
+<section id="boot-screen" aria-label="Dead Signal loading screen"><div class="boot-brand">DEAD <span>SIGNAL</span></div><p class="boot-kicker">3D SPACE. 2D SOUL.</p><canvas id="boot-animation" width="960" height="400" aria-label="A blue soldier shoots an orange soldier, then turns toward the screen"></canvas><div class="boot-bottom"><p id="boot-status" role="status" aria-live="polite">Establishing signal…</p><div class="boot-progress" role="progressbar" aria-label="Loading game resources" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="boot-progress-fill"></i></div><span id="boot-percent">0%</span><p class="boot-note">100% BROWSER GAME · NO DOWNLOAD REQUIRED</p><button id="boot-retry" hidden>RETRY LOADING</button></div><noscript>Enable JavaScript to load Dead Signal.</noscript></section>
 <canvas id="world" tabindex="0" aria-label="3D arena"></canvas><canvas id="weapon" aria-hidden="true"></canvas>
 <div class="vignette"></div><div id="damage"></div>
 <header><a class="brand" href="./"><span class="brand-icon">╋</span> DEAD SIGNAL<span class="edition">FIELD BUILD / 009</span></a><div class="top-right"><span class="live-dot"></span> CAMP PAPER <button id="sound" aria-label="Toggle sound">SOUND ON</button></div></header>
@@ -41,7 +42,5 @@
 <section id="end" class="modal" hidden><div><div class="eyebrow" id="end-label">SIGNAL LOST</div><h2 id="end-title">FLATLINED.</h2><p id="end-description"></p><button id="retry" class="primary">DROP IN AGAIN <span>↗</span></button><div class="menu-stack"><button id="end-menu" class="menu-button danger"><span class="mb-icon">&#10005;</span><span class="mb-text"><b>MAIN MENU</b><small>EXIT THIS MATCH</small></span></button></div></div></section>
 <nav id="tour-controls" hidden aria-label="Training ground preview"><div><button data-view="0">COVER DRILL</button><button data-view="1">TARGET LANES</button><button data-view="2">SUPPLY YARD</button></div><div><button data-weapon="0" class="selected">1 CARBINE</button><button data-weapon="1">2 SHOTGUN</button><button data-weapon="2">3 SIDEARM</button><button data-weapon="3">4 SMG</button><button data-weapon="4">5 MARKSMAN</button><button data-weapon="5">6 MAGNUM</button><button data-weapon="6">7 FRAG</button><button data-weapon="7">8 FLASH</button><button data-weapon="8">9 SMOKE</button><button id="tour-exit">BACK ↩</button></div></nav>
 <div id="unsupported" class="modal" hidden><div><h2>WEBGL REQUIRED</h2><p>This game needs a desktop browser with WebGL enabled.</p></div></div>
-<script type="module" src="game.js?v=loadout-1"></script>
-<script type="module" src="player-hub.js?v=accounts-1"></script>
-<script type="module" src="share.js?v=menu-1"></script>
+<script type="module" src="loading.js?v=intro-1"></script>
 </body></html>
