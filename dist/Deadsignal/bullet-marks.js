@@ -1,4 +1,4 @@
-import {obstacles,features,terrainDistance,groundAt} from './core.js?v=permanent-3';
+import {obstacles,features,terrainDistance,groundAt} from './core.js?v=accounts-1';
 
 export const MAX_MARKS=180;
 export const createMarks=()=>({list:[],serial:0});

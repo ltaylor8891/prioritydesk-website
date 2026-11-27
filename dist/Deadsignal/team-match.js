@@ -1,9 +1,9 @@
-import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=permanent-3';
-import {makeCorpse,CORPSE_LIFETIME,recoverHealth} from './life-effects.js?v=permanent-3';
-import {world,groundAt,walkableLine,blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=permanent-3';
-import {WEAPONS,aimSpread,bloomSpread,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=permanent-3';
-import {raySphere} from './combat.js?v=permanent-3';
-import {createGrenade,stepGrenade,flashStrength,flashDurations,inFieldOfView,actorEye,clearLine,isBlind,fragDamageAt,GRENADE,createCloud,smokeBlocks} from './grenades.js?v=permanent-3';
+import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=accounts-1';
+import {makeCorpse,CORPSE_LIFETIME,recoverHealth} from './life-effects.js?v=accounts-1';
+import {world,groundAt,walkableLine,blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=accounts-1';
+import {WEAPONS,aimSpread,bloomSpread,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=accounts-1';
+import {raySphere} from './combat.js?v=accounts-1';
+import {createGrenade,stepGrenade,flashStrength,flashDurations,inFieldOfView,actorEye,clearLine,isBlind,fragDamageAt,GRENADE,createCloud,smokeBlocks} from './grenades.js?v=accounts-1';
 
 export const MATCH_RULES={teamSize:4,scoreLimit:30,timeLimit:300,respawn:3,protection:1.5};
 // tdm: two squads to 30. ffa: eight players, everyone is an enemy, first to 20. ctf: hold flag circles.
@@ -125,7 +125,7 @@ export function hearShot(match,shooter){
     }
   }
 }
-export function fireMatchWeapon(match,shooter,yaw,pitch=0,extraSpread=0){
+export function fireMatchWeapon(match,shooter,yaw,pitch=0,extraSpread=0,power=GRENADE.defaultPower){
   const facing=shooter.human?shooter.yaw:shooter.heading;
   if(!Number.isFinite(facing)||Math.abs(angleDifference(yaw,facing))>.10)return false;
   if(!shooter.human&&Math.abs(angleDifference(shooter.yaw,shooter.heading+Math.PI))>.001)return false;
@@ -133,8 +133,8 @@ export function fireMatchWeapon(match,shooter,yaw,pitch=0,extraSpread=0){
   const w=WEAPONS[shooter.arsenal.selected],origin={x:shooter.x,y:shooter.human?shooter.y:(shooter.fy||0)+1.35,z:shooter.z};
   shooter.protection=0;
   if(w.type==='grenade'){
-    match.grenades.push(createGrenade(match.nextId++,w.kind,shooter.id,origin,yaw,pitch));
-    match.events.push({type:'throw',shooter:shooter.id,kind:w.kind});
+    match.grenades.push(createGrenade(match.nextId++,w.kind,shooter.id,origin,yaw,pitch,power));
+    match.events.push({type:'throw',shooter:shooter.id,kind:w.kind,power:Number.isFinite(power)?Math.max(0,Math.min(1,power)):GRENADE.defaultPower,x:origin.x,y:origin.y,z:origin.z});
     return true;
   }
   shooter.fire=.12;hearShot(match,shooter);
@@ -152,7 +152,7 @@ export function fireMatchWeapon(match,shooter,yaw,pitch=0,extraSpread=0){
       if(d<near){near=d;victim=other;}
     }
     if(victim)applyDamage(match,victim,shooter,w.damage);
-    match.events.push({type:'shot',shooter:shooter.id,team:shooter.team,a:{...origin},b:{x:origin.x+dir.x*near,y:origin.y+dir.y*near,z:origin.z+dir.z*near}});
+    match.events.push({type:'shot',shooter:shooter.id,team:shooter.team,weapon:shooter.arsenal.selected,a:{...origin},b:{x:origin.x+dir.x*near,y:origin.y+dir.y*near,z:origin.z+dir.z*near}});
   }
   return true;
 }
@@ -175,7 +175,10 @@ function detonate(match,g){
   }
 }
 export function stepGrenades(match,dt){
-  for(const g of match.grenades){g.fuse-=dt;stepGrenade(g,dt);}
+  for(const g of match.grenades){
+    g.fuse-=dt;stepGrenade(g,dt);
+    if(g.impact>2&&g.fuse>0)match.events.push({type:'bounce',kind:g.kind,x:g.x,y:g.y,z:g.z,force:Math.min(1,g.impact/10)});
+  }
   const live=[];
   for(const g of match.grenades){if(g.fuse<=0)detonate(match,g);else live.push(g);}
   match.grenades=live;

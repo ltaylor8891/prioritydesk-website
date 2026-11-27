@@ -6,7 +6,7 @@ export const WEAPONS=[
   {unlockLevel:1,name:'MARKSMAN RIFLE',short:'MARKSMAN',capacity:8,interval:.75,reload:2.2,pellets:1,damage:70,spread:.0008,range:80,automatic:false,hip:.08,ads:.0008,zoom:2.6,style:'LONG RANGE · HEAVY KICK',recoil:{up:.10,side:.008,recover:.9,rate:.8,delay:.35},bloom:{max:.05,perShot:1,decay:1.2}},
   {unlockLevel:1,name:'MAGNUM REVOLVER',short:'MAGNUM',capacity:6,interval:.55,reload:2.4,pellets:1,damage:55,spread:.004,range:40,automatic:false,hip:.045,ads:.004,zoom:1.25,style:'HAND CANNON · MASSIVE KICK',recoil:{up:.12,side:.016,recover:.9,rate:.8,delay:.35},bloom:{max:.04,perShot:.7,decay:1.5}},
   // Grenades share the weapon lineup: 'capacity' is how many you carry, firing throws one, and they never reload.
-  {unlockLevel:1,name:'FRAG GRENADE',short:'FRAG',type:'grenade',kind:'frag',style:'LETHAL · 6 M BLAST',capacity:2,interval:1,reload:0,pellets:0,damage:0,spread:0,range:0,automatic:false},
+  {unlockLevel:1,name:'FRAG GRENADE',short:'FRAG',type:'grenade',kind:'frag',style:'LETHAL TO 5 M · WOUNDS TO 15 M',capacity:2,interval:1,reload:0,pellets:0,damage:0,spread:0,range:0,automatic:false},
   {unlockLevel:1,name:'FLASH GRENADE',short:'FLASH',type:'grenade',kind:'flash',style:'BLINDS · FULL 3 M, FADES BY 6 M',capacity:2,interval:1,reload:0,pellets:0,damage:0,spread:0,range:0,automatic:false},
   {unlockLevel:1,name:'SMOKE GRENADE',short:'SMOKE',type:'grenade',kind:'smoke',style:'COVER · 5 M CLOUD',capacity:2,interval:1,reload:0,pellets:0,damage:0,spread:0,range:0,automatic:false}
 ];

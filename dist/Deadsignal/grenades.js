@@ -1,9 +1,12 @@
-import {obstacles,wallDistance,groundAt,features} from './core.js?v=permanent-3';
+import {obstacles,wallDistance,groundAt,features} from './core.js?v=accounts-1';
 
 export const GRENADE={
   speed:12,lift:2,gravity:16,radius:.12,
+  // Hold the throw button to wind up: a tap is a gentle underarm toss, a full charge (chargeTime) is an overarm hurl.
+  throwMin:2,throwMax:22,chargeTime:1.1,defaultPower:.5,
   fuse:{frag:2.4,flash:1.6,smoke:1.1},
-  fragRadius:6,fragDamage:140,
+  // Real fragmentation grenades are lethal out to roughly 5 m and can still wound to about 15 m.
+  fragLethal:5,fragRadius:15,fragDamage:220,
   flashFull:3,flashRange:6,flashHold:3,flashFade:3,flashViewCos:.6,
   smokeRadius:4.5,smokeLife:15,smokeGrow:1.4,smokeFade:3,smokeHeight:1.4
 };
@@ -14,10 +17,12 @@ const solidAt=g=>{for(const b of obstacles)if(Math.abs(g.x-b.x)<b.w/2+R&&Math.ab
 // A pit wall or plateau edge taller than a roll-over acts like a wall.
 const terrainWall=g=>features.length>0&&groundAt(g.x,g.z)-(g.y-R)>.35;
 
-export function createGrenade(id,kind,owner,origin,yaw,pitch){
-  const dir=aimDirection(yaw,pitch);
+export const throwPower=held=>Math.max(0,Math.min(1,(Number.isFinite(held)?held:0)/GRENADE.chargeTime));
+export const throwSpeed=power=>GRENADE.throwMin+(GRENADE.throwMax-GRENADE.throwMin)*Math.max(0,Math.min(1,Number.isFinite(power)?power:GRENADE.defaultPower));
+export function createGrenade(id,kind,owner,origin,yaw,pitch,power=GRENADE.defaultPower){
+  const dir=aimDirection(yaw,pitch),speed=throwSpeed(power);
   let g={id,kind,owner,x:origin.x+dir.x*.45,y:origin.y-.15+dir.y*.45,z:origin.z+dir.z*.45,
-    vx:dir.x*GRENADE.speed,vy:dir.y*GRENADE.speed+GRENADE.lift,vz:dir.z*GRENADE.speed,fuse:GRENADE.fuse[kind],age:0};
+    vx:dir.x*speed,vy:dir.y*speed+GRENADE.lift,vz:dir.z*speed,fuse:GRENADE.fuse[kind],age:0,impact:0};
   // Throwing from against a wall must not start the grenade inside it.
   if(solidAt(g)){g.x=origin.x;g.y=origin.y-.15;g.z=origin.z;}
   return g;
@@ -25,15 +30,16 @@ export function createGrenade(id,kind,owner,origin,yaw,pitch){
 // Bounces off walls and cover (which have real heights), lands on top of low cover, and rolls to a stop on the ground.
 export function stepGrenade(g,dt){
   const steps=Math.max(1,Math.ceil(dt/.016)),h=dt/steps;
+  g.impact=0;
   for(let i=0;i<steps;i++){
     g.vy-=GRENADE.gravity*h;
-    g.x+=g.vx*h;if(solidAt(g)||terrainWall(g)){g.x-=g.vx*h;g.vx*=-.45;g.vz*=.85;}
-    g.z+=g.vz*h;if(solidAt(g)||terrainWall(g)){g.z-=g.vz*h;g.vz*=-.45;g.vx*=.85;}
+    g.x+=g.vx*h;if(solidAt(g)||terrainWall(g)){g.impact=Math.max(g.impact,Math.abs(g.vx));g.x-=g.vx*h;g.vx*=-.45;g.vz*=.85;}
+    g.z+=g.vz*h;if(solidAt(g)||terrainWall(g)){g.impact=Math.max(g.impact,Math.abs(g.vz));g.z-=g.vz*h;g.vz*=-.45;g.vx*=.85;}
     const before=g.y;g.y+=g.vy*h;
     const top=solidAt(g);
     if(top){
-      if(before-R>=top.h-1e-6){g.y=top.h+R;land(g);}else{g.y=before;g.vy=-g.vy*.3;}
-    }else{const floor=features.length?groundAt(g.x,g.z):0;if(g.y<floor+R){g.y=floor+R;land(g);}}
+      if(before-R>=top.h-1e-6){g.impact=Math.max(g.impact,Math.abs(g.vy));g.y=top.h+R;land(g);}else{g.impact=Math.max(g.impact,Math.abs(g.vy));g.y=before;g.vy=-g.vy*.3;}
+    }else{const floor=features.length?groundAt(g.x,g.z):0;if(g.y<floor+R){g.y=floor+R;g.impact=Math.max(g.impact,Math.abs(g.vy));land(g);}}
   }
   g.age+=dt;
 }
@@ -72,7 +78,13 @@ export function blindOpacity(actor,time){
 // A blinded bot cannot see until the white has mostly faded.
 export const isBlind=(actor,time)=>time>=actor.blindStart&&time<actor.blindStart+actor.blindHold+actor.blindFade*.5;
 
-export const fragDamageAt=distance=>distance>=GRENADE.fragRadius?0:Math.round(GRENADE.fragDamage*(1-distance/GRENADE.fragRadius));
+// Lethal zone: 220 at the grenade falling to 100 at 5 m. Beyond that shrapnel thins out quickly: 100 at 5 m, ~25 at 10 m, nothing at 15 m.
+export function fragDamageAt(distance){
+  const {fragLethal:L,fragRadius:R2,fragDamage:D}=GRENADE;
+  if(distance>=R2)return 0;
+  if(distance<=L)return Math.round(100+(D-100)*(1-Math.max(0,distance)/L));
+  return Math.round(100*(1-(distance-L)/(R2-L))**2);
+}
 
 export function cloudRadius(c){return GRENADE.smokeRadius*Math.min(1,c.age/GRENADE.smokeGrow);}
 export function cloudOpacity(c){return Math.max(0,Math.min(1,(c.life-c.age)/GRENADE.smokeFade));}

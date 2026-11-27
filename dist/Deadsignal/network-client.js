@@ -1,5 +1,5 @@
-import {Client} from './colyseus-client.js?v=permanent-3';
-import {NETWORK_VERSION,reconcilePlayer} from './network-motion.js?v=permanent-3';
+import {Client} from './colyseus-client.js?v=accounts-1';
+import {NETWORK_VERSION,reconcilePlayer} from './network-motion.js?v=accounts-1';
 
 export function serverAddress(value){
   const url=new URL(value);
@@ -27,8 +27,8 @@ export class NetworkGame{
     this.timer=setInterval(()=>{if(!this.closed)room.send('ping',performance.now());},2000);
     room.send('ready');
   }
-  static async connect({address,fallbackAddress=null,name,avatar=0,loadout=null,code,team=null,mode='tdm',map='camp',onSnapshot,onDisconnect}){
-    const options={name,team,avatar,loadout,mode,map,version:NETWORK_VERSION};
+  static async connect({address,fallbackAddress=null,name,ticket,avatar=0,loadout=null,code,team=null,mode='tdm',map='camp',onSnapshot,onDisconnect}){
+    const options={name,ticket,team,avatar,loadout,mode,map,version:NETWORK_VERSION};
     const enter=async endpoint=>{
       const client=new Client(serverAddress(endpoint));
       return code?await client.joinById(code.trim().toUpperCase(),options):await client.create('training',options);

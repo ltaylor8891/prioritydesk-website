@@ -1,5 +1,5 @@
-import {townBuildingWalls} from './town.js?v=permanent-3';
-import {makeGround} from './core.js?v=permanent-3';
+import {townBuildingWalls} from './town.js?v=accounts-1';
+import {makeGround} from './core.js?v=accounts-1';
 
 // Ashen Front: a 144 m battlefield. A ring of trenches with forward saps surrounds a cratered no-man's-land of
 // ruined buildings, wrecks and rubble; ramps, ladders and four raised command posts connect the levels, and the

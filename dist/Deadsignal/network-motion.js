@@ -1,6 +1,6 @@
-import {clamp,move,groundAt,ladders,ladderGeometry} from './core.js?v=permanent-3';
-import {updateWalk} from './actor-motion.js?v=permanent-3';
-import {WEAPONS} from './weapons.js?v=permanent-3';
+import {clamp,move,groundAt,ladders,ladderGeometry} from './core.js?v=accounts-1';
+import {updateWalk} from './actor-motion.js?v=accounts-1';
+import {WEAPONS} from './weapons.js?v=accounts-1';
 
 export const NETWORK_VERSION=6;
 export const INPUT_DT=1/30;
