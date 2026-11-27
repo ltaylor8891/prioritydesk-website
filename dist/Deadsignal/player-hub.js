@@ -1,4 +1,4 @@
-import {setProgress} from './progression.js?v=season-1';
+import {setProgress} from './progression.js?v=cinema-1';
 // Credentials stay in an HttpOnly server cookie; no passwords or tokens in storage.
 const $=id=>document.getElementById(id);
 let profile=null,busy=false,joining=false,server='';
