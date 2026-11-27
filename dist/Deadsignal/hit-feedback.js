@@ -1,4 +1,4 @@
-import {clamp,wallDistance} from './core.js?v=accounts-1';
+import {clamp,wallDistance} from './core.js?v=season-1';
 
 export const HEALTH_BAR_SECONDS=1;
 export const DAMAGE_NUMBER_SECONDS=.9;

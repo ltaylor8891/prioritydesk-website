@@ -1,9 +1,9 @@
-import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=accounts-1';
-import {makeCorpse,CORPSE_LIFETIME,recoverHealth} from './life-effects.js?v=accounts-1';
-import {world,groundAt,walkableLine,blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=accounts-1';
-import {WEAPONS,aimSpread,bloomSpread,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=accounts-1';
-import {raySphere} from './combat.js?v=accounts-1';
-import {createGrenade,stepGrenade,flashStrength,flashDurations,inFieldOfView,actorEye,clearLine,isBlind,fragDamageAt,GRENADE,createCloud,smokeBlocks} from './grenades.js?v=accounts-1';
+import {turnActor,facingTarget,angleDifference,updateWalk} from './actor-motion.js?v=season-1';
+import {makeCorpse,CORPSE_LIFETIME,recoverHealth} from './life-effects.js?v=season-1';
+import {world,groundAt,walkableLine,blocked,move,visible,cover,flowField,nextStep,wallDistance,raySprite,ENEMY_SIZE} from './core.js?v=season-1';
+import {WEAPONS,aimSpread,bloomSpread,createArsenal,stepWeapon,fireWeapon,startReload} from './weapons.js?v=season-1';
+import {raySphere} from './combat.js?v=season-1';
+import {createGrenade,stepGrenade,flashStrength,flashDurations,inFieldOfView,actorEye,clearLine,isBlind,fragDamageAt,GRENADE,createCloud,smokeBlocks} from './grenades.js?v=season-1';
 
 export const MATCH_RULES={teamSize:4,scoreLimit:30,timeLimit:300,respawn:3,protection:1.5};
 // tdm: two squads to 30. ffa: eight players, everyone is an enemy, first to 20. ctf: hold flag circles.
@@ -24,7 +24,7 @@ const angleDiff=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
 export function createMatch({spectator=false,random=Math.random,mode='tdm'}={}){
   if(!MODES[mode])throw new Error('Unknown game mode.');
   const match={actors:[],corpses:[],scores:[0,0],elapsed:0,ended:false,winner:null,events:[],feed:[],random,spectator,mode,timeLimit:MODES[mode].timeLimit,
-    grenades:[],clouds:[],nextId:1,
+    grenades:[],clouds:[],bolts:[],nextId:1,
     zones:mode==='ctf'?(world.zones||[]).map(([x,z])=>({x,z,r:ZONE_RADIUS,owner:null,capturer:null,progress:0,contested:false,present:[0,0]})):[],held:[0,0]};
   for(let team=0;team<2;team++)for(let slot=0;slot<4;slot++){
     const id=team*4+slot,arsenal=createArsenal();arsenal.selected=slot%3;
@@ -137,7 +137,8 @@ export function fireMatchWeapon(match,shooter,yaw,pitch=0,extraSpread=0,power=GR
     match.events.push({type:'throw',shooter:shooter.id,kind:w.kind,power:Number.isFinite(power)?Math.max(0,Math.min(1,power)):GRENADE.defaultPower,x:origin.x,y:origin.y,z:origin.z});
     return true;
   }
-  shooter.fire=.12;hearShot(match,shooter);
+  shooter.fire=.12;if(!w.projectile)hearShot(match,shooter);
+  if(w.projectile){const spread=shooter.human?aimSpread(w,shooter.ads):w.spread;yaw+=(match.random()-.5)*2*spread;pitch+=(match.random()-.5)*2*spread;const dir={x:Math.sin(yaw)*Math.cos(pitch),y:Math.sin(pitch),z:-Math.cos(yaw)*Math.cos(pitch)};match.bolts.push({id:match.nextId++,owner:shooter.id,...origin,vx:dir.x*48,vy:dir.y*48,vz:dir.z*48,remaining:w.range});match.events.push({type:'bolt-launch',shooter:shooter.id,weapon:10,a:{...origin},b:{x:origin.x+dir.x,y:origin.y+dir.y,z:origin.z+dir.z}});return true;}
   const bloomNow=shooter.bloom||0;
   shooter.lastShot=match.elapsed;
   if(shooter.human&&w.bloom)shooter.bloom=Math.min(1,bloomNow+w.bloom.perShot);
@@ -155,6 +156,13 @@ export function fireMatchWeapon(match,shooter,yaw,pitch=0,extraSpread=0,power=GR
     match.events.push({type:'shot',shooter:shooter.id,team:shooter.team,weapon:shooter.arsenal.selected,a:{...origin},b:{x:origin.x+dir.x*near,y:origin.y+dir.y*near,z:origin.z+dir.z*near}});
   }
   return true;
+}
+export function stepBolts(match,dt){
+  match.bolts=match.bolts.filter(b=>{if(match.ended)return false;const shooter=match.actors[b.owner],speed=Math.hypot(b.vx,b.vy,b.vz),dir={x:b.vx/speed,y:b.vy/speed,z:b.vz/speed},origin={x:b.x,y:b.y,z:b.z},travel=Math.min(speed*dt,b.remaining),wall=wallDistance(origin,dir);let near=Math.min(travel,wall),victim=null;
+    for(const other of match.actors){if(other===shooter||other.hp<=0||other.disabled)continue;const d=other.human&&!match.network?raySphere(origin,dir,{x:other.x,y:(other.fy||0)+1.25-(other.crouch||0)*.35,z:other.z},.62):raySprite(origin,dir,other.human?{...other,yaw:other.yaw+Math.PI}:other,ENEMY_SIZE*(1-.28*(other.crouch||0)),other.fy||0);if(d<near){near=d;victim=other;}}
+    b.x+=dir.x*near;b.y+=dir.y*near;b.z+=dir.z*near;b.remaining-=near;b.vy-=2*dt;
+    if(victim||wall<=travel||b.remaining<=0){if(victim)applyDamage(match,victim,shooter,100,'CROSSBOW');match.events.push({type:'bolt-impact',a:origin,b:{x:b.x,y:b.y,z:b.z}});return false;}return true;
+  });
 }
 function detonate(match,g){
   const thrower=match.actors[g.owner];
@@ -329,6 +337,7 @@ export function tickMatch(match,dt){
   match.feed=match.feed.filter(e=>match.elapsed-e.time<7);
   match.corpses=match.corpses.filter(c=>match.elapsed-c.diedAt<CORPSE_LIFETIME);
   stepGrenades(match,dt);
+  stepBolts(match,dt);
   if(match.mode==='ctf')tickZones(match,dt);
   if(!match.ended&&match.elapsed>=match.timeLimit)endMatch(match);
 }

@@ -1,8 +1,8 @@
-import {clamp,move,groundAt,ladders,ladderGeometry} from './core.js?v=accounts-1';
-import {updateWalk} from './actor-motion.js?v=accounts-1';
-import {WEAPONS} from './weapons.js?v=accounts-1';
+import {clamp,move,groundAt,ladders,ladderGeometry} from './core.js?v=season-1';
+import {updateWalk} from './actor-motion.js?v=season-1';
+import {WEAPONS} from './weapons.js?v=season-1';
 
-export const NETWORK_VERSION=6;
+export const NETWORK_VERSION=7;
 export const INPUT_DT=1/30;
 // Eye heights, jump and speeds shared by local play, the server and client prediction.
 export const PLAYER={eye:1.65,crouchDrop:.62,jumpSpeed:6.6,gravity:21,walk:3.8,sprint:6,crouch:2,crouchRate:9,aimSlow:.75,adsTime:.18};

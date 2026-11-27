@@ -1,20 +1,22 @@
 export const WEAPONS=[
   {unlockLevel:1,name:'FIELD CARBINE',short:'CARBINE',capacity:24,interval:.15,reload:1.5,pellets:1,damage:25,spread:.004,range:48,automatic:true,hip:.034,ads:.004,zoom:1.3,style:'ALL-ROUNDER · STEADY CLIMB',recoil:{up:.018,side:.008,recover:.6,rate:.45,delay:.25},bloom:{max:.03,perShot:.1,decay:1.2}},
-  {unlockLevel:1,name:'DRILL SHOTGUN',short:'SHOTGUN',capacity:6,interval:.8,reload:1.9,pellets:7,damage:12,spread:.065,range:19,automatic:false,hip:.095,ads:.05,zoom:1.12,style:'CLOSE RANGE · HEAVY KICK',recoil:{up:.08,side:.012,recover:.9,rate:.8,delay:.3},bloom:{max:.02,perShot:.5,decay:1.5}},
+  {unlockLevel:2,name:'DRILL SHOTGUN',short:'SHOTGUN',capacity:6,interval:.8,reload:1.9,pellets:7,damage:12,spread:.065,range:19,automatic:false,hip:.095,ads:.05,zoom:1.12,style:'CLOSE RANGE · HEAVY KICK',recoil:{up:.08,side:.012,recover:.9,rate:.8,delay:.3},bloom:{max:.02,perShot:.5,decay:1.5}},
   {unlockLevel:1,name:'SERVICE SIDEARM',short:'SIDEARM',capacity:12,interval:.28,reload:1.1,pellets:1,damage:34,spread:.002,range:38,automatic:false,hip:.028,ads:.002,zoom:1.18,style:'SNAPPY · LIGHT KICK',recoil:{up:.03,side:.006,recover:.9,rate:1.3,delay:.18},bloom:{max:.02,perShot:.3,decay:3}},
-  {unlockLevel:1,name:'RAPID SMG',short:'SMG',capacity:32,interval:.075,reload:1.7,pellets:1,damage:14,spread:.022,range:30,automatic:true,hip:.058,ads:.012,zoom:1.2,style:'RAPID · SIDE-TO-SIDE DRIFT',recoil:{up:.011,side:.012,recover:.5,rate:.4,delay:.25},bloom:{max:.05,perShot:.06,decay:1.1}},
-  {unlockLevel:1,name:'MARKSMAN RIFLE',short:'MARKSMAN',capacity:8,interval:.75,reload:2.2,pellets:1,damage:70,spread:.0008,range:80,automatic:false,hip:.08,ads:.0008,zoom:2.6,style:'LONG RANGE · HEAVY KICK',recoil:{up:.10,side:.008,recover:.9,rate:.8,delay:.35},bloom:{max:.05,perShot:1,decay:1.2}},
-  {unlockLevel:1,name:'MAGNUM REVOLVER',short:'MAGNUM',capacity:6,interval:.55,reload:2.4,pellets:1,damage:55,spread:.004,range:40,automatic:false,hip:.045,ads:.004,zoom:1.25,style:'HAND CANNON · MASSIVE KICK',recoil:{up:.12,side:.016,recover:.9,rate:.8,delay:.35},bloom:{max:.04,perShot:.7,decay:1.5}},
+  {unlockLevel:3,name:'RAPID SMG',short:'SMG',capacity:32,interval:.075,reload:1.7,pellets:1,damage:14,spread:.022,range:30,automatic:true,hip:.058,ads:.012,zoom:1.2,style:'RAPID · SIDE-TO-SIDE DRIFT',recoil:{up:.011,side:.012,recover:.5,rate:.4,delay:.25},bloom:{max:.05,perShot:.06,decay:1.1}},
+  {unlockLevel:4,name:'MARKSMAN RIFLE',short:'MARKSMAN',capacity:8,interval:1.6,reload:2.2,pellets:1,damage:70,spread:.0008,range:80,automatic:false,hip:.08,ads:.0008,zoom:2.6,style:'LONG RANGE · HEAVY KICK',recoil:{up:.10,side:.008,recover:.9,rate:.8,delay:.35},bloom:{max:.05,perShot:1,decay:1.2}},
+  {unlockLevel:5,name:'MAGNUM REVOLVER',short:'MAGNUM',capacity:6,interval:.55,reload:2.4,pellets:1,damage:55,spread:.004,range:40,automatic:false,hip:.045,ads:.004,zoom:1.25,style:'HAND CANNON · MASSIVE KICK',recoil:{up:.12,side:.016,recover:.9,rate:.8,delay:.35},bloom:{max:.04,perShot:.7,decay:1.5}},
   // Grenades share the weapon lineup: 'capacity' is how many you carry, firing throws one, and they never reload.
   {unlockLevel:1,name:'FRAG GRENADE',short:'FRAG',type:'grenade',kind:'frag',style:'LETHAL TO 5 M · WOUNDS TO 15 M',capacity:2,interval:1,reload:0,pellets:0,damage:0,spread:0,range:0,automatic:false},
   {unlockLevel:1,name:'FLASH GRENADE',short:'FLASH',type:'grenade',kind:'flash',style:'BLINDS · FULL 3 M, FADES BY 6 M',capacity:2,interval:1,reload:0,pellets:0,damage:0,spread:0,range:0,automatic:false},
-  {unlockLevel:1,name:'SMOKE GRENADE',short:'SMOKE',type:'grenade',kind:'smoke',style:'COVER · 5 M CLOUD',capacity:2,interval:1,reload:0,pellets:0,damage:0,spread:0,range:0,automatic:false}
+  {unlockLevel:2,name:'SMOKE GRENADE',short:'SMOKE',type:'grenade',kind:'smoke',style:'COVER · 5 M CLOUD',capacity:2,interval:1,reload:0,pellets:0,damage:0,spread:0,range:0,automatic:false},
+  {unlockLevel:8,name:'DUAL SERVICE PISTOLS',short:'DUAL PISTOLS',capacity:24,interval:.16,reload:2.1,pellets:1,damage:26,spread:.025,range:34,automatic:false,hip:.06,ads:.035,zoom:1.05,style:'ALTERNATING HANDS · FAST FOLLOW-UP',recoil:{up:.026,side:.018,recover:.85,rate:1.1,delay:.15},bloom:{max:.025,perShot:.16,decay:2.5}},
+  {unlockLevel:6,name:'FIELD CROSSBOW',short:'CROSSBOW',projectile:true,capacity:1,interval:1.8,reload:2.4,pellets:1,damage:100,spread:.003,range:65,automatic:false,hip:.045,ads:.003,zoom:1.6,style:'QUIET BOLTS · SINGLE SHOT',recoil:{up:.025,side:.004,recover:.95,rate:1.2,delay:.2},bloom:{max:.01,perShot:1,decay:2}}
 ];
 // A loadout is two different guns (slots 1-2) and two different grenades (slots 3-4).
 export const DEFAULT_LOADOUT=[0,2,6,7];
 export function cleanLoadout(raw){
   if(!Array.isArray(raw)||raw.length!==4)return [...DEFAULT_LOADOUT];
-  const [a,b,c,d]=raw,gun=x=>Number.isInteger(x)&&x>=0&&x<6,nade=x=>Number.isInteger(x)&&x>=6&&x<9;
+  const [a,b,c,d]=raw,gun=x=>Number.isInteger(x)&&x>=0&&x<WEAPONS.length&&WEAPONS[x].type!=='grenade',nade=x=>Number.isInteger(x)&&x>=0&&x<WEAPONS.length&&WEAPONS[x].type==='grenade';
   return gun(a)&&gun(b)&&a!==b&&nade(c)&&nade(d)&&c!==d?[a,b,c,d]:[...DEFAULT_LOADOUT];
 }
 // Hip fire is loose; aiming down the sights (ads 0 to 1) tightens it to the gun's aimed spread.
@@ -37,7 +39,7 @@ export function fireWeapon(a){if(a.reload>0||a.cooldown>0||a.ammo[a.selected]===
 
 export function weaponMotion({selected=0,recoil=0,reload=0,run=0,sprint=0,walkPhase=0,shotAge=9,time=0}={}){
   // Pure offsets so run/fire animation can be tested without a canvas.
-  const stride=walkPhase*Math.PI/4,weapon=WEAPONS[selected],kick=selected===1?1.55:selected===2?.8:selected===4?1.7:selected===5?1.9:selected===3?.55:selected>=6?-1.4:1;
+  const stride=walkPhase*Math.PI/4,weapon=WEAPONS[selected],kick=selected===1?1.55:selected===2?.8:selected===4?1.7:selected===5?1.9:selected===3?.55:weapon.type==='grenade'?-1.4:1;
   const idle=Math.sin(time*1.6)*2.2*(1-run);
   const swayX=Math.sin(stride)*13*run*(1+sprint*.9)+idle;
   const bounce=Math.abs(Math.cos(stride))*17*run*(1+sprint*.7)+Math.sin(time*1.3)*1.6*(1-run);
@@ -47,7 +49,7 @@ export function weaponMotion({selected=0,recoil=0,reload=0,run=0,sprint=0,walkPh
   const pump=selected===1&&pumpT>0&&pumpT<1?Math.sin(pumpT*Math.PI)*46:0;
   return {x:swayX+sprint*-26,y:bounce+dip+reloadDip+recoil*24*kick,
     angle:-recoil*.025*kick+Math.sin(stride)*.03*run+sprint*.2-(selected===1?recoil*.05:0),pump,
-    casing:selected!==1&&selected<6&&shotAge<.45?shotAge/.45:-1};
+    casing:selected!==1&&weapon.type!=='grenade'&&!weapon.projectile&&shotAge<.45?shotAge/.45:-1};
 }
 export function drawPlayerWeapon(ctx,width,height,{selected=0,recoil=0,reload=0,bob=0,time=0,run=0,sprint=0,walkPhase=0,shotAge=9,colors={},ammo=1,ads=0}={}){
   const ink='#161c18',wood='#99724b',metal='#667363',dark='#39483f',skin=colors.skin||'#e2d4af',sleeve=colors.cloth||'#687345';
@@ -57,13 +59,13 @@ export function drawPlayerWeapon(ctx,width,height,{selected=0,recoil=0,reload=0,
   ctx.save();
   if(selected===4)ctx.globalAlpha=1-Math.max(0,Math.min(1,(ads-.55)/.3));
   // While aiming, the front sight is parked just below the crosshair so the gun never covers what you are shooting at.
-  const tip=[47,68,151,92,36,142][selected]??60,hipY=height-400*scale+m.y*scale,aimY=height*.5+Math.max(26,height*.035)-tip*scale*big;
+  const tip=selected===9?155:selected===10?108:[47,68,151,92,36,142][selected]??60,hipY=height-400*scale+m.y*scale,aimY=height*.5+Math.max(26,height*.035)-tip*scale*big;
   ctx.translate(width*.5-250*scale*big+(bob+m.x*scale)*steady,hipY+(aimY-hipY)*ads);
   ctx.scale(scale*big,scale*big);ctx.rotate(m.angle*steady);
   const p=(d,fill,line=ink,w=9)=>{ctx.lineJoin='round';ctx.lineCap='round';ctx.lineWidth=w;const path=new Path2D(d);if(fill){ctx.fillStyle=fill;ctx.fill(path);}if(line){ctx.strokeStyle=line;ctx.stroke(path);}};
   // The same round sleeves and mitten hands as the enemy illustrations.
   p('M 50 408 L 112 309 Q 148 287 173 321 L 187 400 Z',sleeve);
-  p('M 112 313 Q 106 273 143 254 Q 167 246 179 269 L 201 303 Q 184 336 156 340 Z',skin);
+  if(selected!==9)p('M 112 313 Q 106 273 143 254 Q 167 246 179 269 L 201 303 Q 184 336 156 340 Z',skin);
   p('M 345 402 L 323 324 Q 351 292 381 309 L 448 408 Z',sleeve);
   if(selected===0){
     p('M 217 175 L 228 70 L 264 70 L 278 176 Z',dark);
@@ -124,6 +126,11 @@ export function drawPlayerWeapon(ctx,width,height,{selected=0,recoil=0,reload=0,
     p('M 292 250 L 312 226 L 322 246 L 306 262 Z',dark,ink,6);
     p('M 206 330 L 296 330 L 322 410 L 200 414 Z',wood);
     p('M 290 318 Q 346 340 316 372 L 304 346',null,ink,9);
+  }else if(selected===9){
+    // Two independent pistols; ammunition parity selects the hand that just fired.
+    for(const side of [-1,1]){ctx.save();const kick=(ammo%2===(side<0?0:1)?recoil:0);ctx.translate(side*110,kick*35);ctx.rotate(side*.11);p('M 213 190 L 266 190 L 287 290 L 201 290 Z',metal);p('M 221 192 L 224 166 L 255 166 L 260 192 Z',dark);p('M 236 171 L 237 155 L 247 155 L 249 171 Z','#e1c379',ink,5);p('M 205 284 L 282 284 L 294 392 L 203 394 Z',wood);p('M 190 313 Q 225 291 250 320 L 269 364 Q 231 393 195 363 Z',skin);if(kick>.45)p('M 239 155 L 213 116 L 240 125 L 248 88 L 259 124 L 283 111 L 266 156 Z','#ffd572',ink,5);ctx.restore();}
+  }else if(selected===10){
+    p('M 218 150 L 273 150 L 296 389 L 208 389 Z',wood);p('M 235 160 L 255 160 L 264 324 L 228 324 Z',dark);p('M 242 157 L 246 108 L 252 157 Z','#e1c379',ink,4);p('M 240 180 Q 140 145 80 239 L 91 253 Q 157 210 240 229 Z',metal);p('M 256 180 Q 356 145 416 239 L 405 253 Q 339 210 256 229 Z',metal);p('M 88 246 L 248 291 L 409 246',null,'#e9dec3',4);if(ammo>0)p('M 248 294 L 248 127 M 248 127 L 240 143 M 248 127 L 256 143',null,'#e1c379',5);p('M 215 319 L 283 319 L 293 403 L 210 403 Z',wood);
   }else if(ammo>0&&shotAge>.5){
     // Grenades: a fused body held up in front, with the safety lever and pin ring.
     const cyl=(body,band)=>{
@@ -140,10 +147,10 @@ export function drawPlayerWeapon(ctx,width,height,{selected=0,recoil=0,reload=0,
     p('M 268 158 Q 322 150 328 204 L 316 208 Q 310 172 270 170 Z','#b8b8a8',ink,6);
     p('M 244 140 Q 230 118 250 112 Q 270 120 258 142',null,'#d6bd7a',7);
   }
-  ctx.save();ctx.translate(0,-m.pump);
+  if(selected!==9){ctx.save();ctx.translate(0,-m.pump);
   p('M 320 323 Q 347 296 369 317 L 388 351 Q 381 380 352 382 L 321 362 Z',skin);
   p('M 339 329 Q 350 321 359 334 M 344 347 Q 358 339 366 352',null,'#a89c7c',4);
-  ctx.restore();
+  ctx.restore();}
   if(m.casing>=0){const t=m.casing,x=290+t*70,y=(selected===2?262:236)-Math.sin(t*Math.PI)*70+t*t*60;ctx.save();ctx.translate(x,y);ctx.rotate(t*9);ctx.globalAlpha=1-t*t;p('M -7 -4 L 7 -4 L 7 4 L -7 4 Z','#e1c379',ink,3);ctx.restore();}
   if(recoil>.45&&selected<6){const y=[44,65,147,96,24,138][selected];p(`M 240 ${y} L 208 ${y-28} L 234 ${y-22} L 248 ${y-67} L 261 ${y-24} L 292 ${y-35} L 270 ${y-3} L 250 ${y+5} Z`,'#ffd572',ink,5);p(`M 242 ${y-6} L 248 ${y-38} L 262 ${y-3} Z`,'#fff4bc',null);}
   ctx.restore();

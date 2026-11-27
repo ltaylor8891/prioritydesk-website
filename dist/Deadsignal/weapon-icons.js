@@ -68,6 +68,8 @@ export function drawWeaponIcon(ctx,index){
       p('M 96 76 L 144 76 L 130 118 L 84 110 Z',wood);p('M 102 90 L 136 94 M 98 102 L 128 108',null,woodDark,3);
       p('M 150 78 Q 180 80 176 100 L 154 94',null,ink,5);
     },
+    9:()=>{for(const [x,y] of [[-30,-10],[60,16]]){ctx.save();ctx.translate(x,y);ctx.scale(.8,.8);art[2]();ctx.restore();}},
+    10:()=>{p('M 25 62 L 100 54 L 116 87 L 40 98 Z',wood);p('M 100 52 L 267 52 L 267 69 L 100 79 Z',metal);p('M 232 20 Q 164 48 232 108 M 232 20 L 116 62 L 232 108',null,ink,7);p('M 110 59 L 302 59 M 302 59 L 284 51 M 302 59 L 284 67',null,brass,4);p('M 116 78 L 140 78 L 135 110 L 114 110 Z',wood);},
     // 6 FRAG GRENADE: ridged body, fuse, safety lever and pin ring.
     6:()=>{
       p('M 110 74 Q 110 28 160 28 Q 210 28 210 74 Q 210 116 160 120 Q 110 116 110 74 Z','#5d6b3c');

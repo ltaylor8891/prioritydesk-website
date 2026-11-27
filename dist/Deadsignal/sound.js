@@ -11,6 +11,8 @@ export const GUN_SOUNDS=[
   {crack:[2200,.06,1],body:[1100,150,.34,1.1],thump:[105,34,.32,1.1],tail:[1.1,.55],pitch:1},       // marksman
   {crack:[2000,.06,1],body:[1300,120,.34,1.2],thump:[85,28,.34,1.3],tail:[.95,.5],pitch:1}          // magnum
 ];
+GUN_SOUNDS[9]={...GUN_SOUNDS[2],pitch:1.1};
+GUN_SOUNDS[10]={crack:[1500,.018,.12],body:[420,130,.14,.5],thump:[90,50,.08,.16],tail:[.16,.06],pitch:1};
 // Reload layout per gun: when (as a fraction of the reload) each mechanical sound happens.
 const RELOADS=[
   [['clack',.08,.9],['slide',.2,.5],['clunk',.62,1],['clack',.94,.8]],
@@ -20,6 +22,9 @@ const RELOADS=[
   [['clack',.08,.9],['slide',.3,.5],['clunk',.6,1],['bolt',.85,1]],
   [['clack',.06,1],['ejector',.25,1],['shell',.45,.7],['shell',.6,.7],['clack',.9,1]]
 ];
+
+RELOADS[9]=[['clack',.1,.7],['clunk',.35,.7],['clunk',.68,.7],['clack',.95,.7]];
+RELOADS[10]=[['slide',.12,.45],['bolt',.65,.7],['clack',.95,.4]];
 
 export function createSound({context,muted=()=>false,listener=()=>({x:0,z:0,yaw:0})}){
   let ctx=null,master=null,reverb=null,noiseBuffer=null;

@@ -1,4 +1,4 @@
-import {obstacles,wallDistance,groundAt,features} from './core.js?v=accounts-1';
+import {obstacles,wallDistance,groundAt,features} from './core.js?v=season-1';
 
 export const GRENADE={
   speed:12,lift:2,gravity:16,radius:.12,

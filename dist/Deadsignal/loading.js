@@ -29,5 +29,5 @@ function paint(time){if(finished)return;const t=(time-start)/1000;if(ready&&fina
   if(!failed)requestAnimationFrame(paint);
 }
 requestAnimationFrame(paint);
-async function boot(){try{if(!document.querySelector('link[rel=stylesheet]').sheet)throw new Error('Game styles could not load.');progress(5,'Opening the training ground…');const art=await import('./enemy-art.js?v=accounts-1');drawEnemy=art.drawEnemy;progress(15,'Loading the game modules…');await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));await Promise.all([import('./game.js?v=intro-1'),import('./share.js?v=menu-1')]);if(failed)return;progress(100,'Signal established. Get ready.');ready=true;}catch(error){fail(error);}}
+async function boot(){try{if(!document.querySelector('link[rel=stylesheet]').sheet)throw new Error('Game styles could not load.');progress(5,'Opening the training ground…');const art=await import('./enemy-art.js?v=season-1');drawEnemy=art.drawEnemy;progress(15,'Loading the game modules…');await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));await Promise.all([import('./game.js?v=season-1'),import('./share.js?v=menu-1')]);if(failed)return;progress(100,'Signal established. Get ready.');ready=true;}catch(error){fail(error);}}
 boot();

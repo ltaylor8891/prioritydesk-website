@@ -1,25 +1,25 @@
-import {makeCorpse,corpseCorners,corpseOpacity,CORPSE_LIFETIME,recoverHealth,damageOpacity} from './life-effects.js?v=accounts-1';
-import {createHitFeedback,recordHit,clearActorFeedback,drawHitFeedback} from './hit-feedback.js?v=accounts-1';
-import {WALK_FRAMES,walkFrame,updateWalk,turnActor,headingTo,showsBack} from './actor-motion.js?v=accounts-1';
-import {drawMinimap} from './minimap.js?v=accounts-1';
-import {world,setWorld,groundAt,ladders,nearestLadder,CAMP_WORLD,clamp,cover,walls,blocked,move,wallDistance,visible,flowField,nextStep,ENEMY_SIZE,spriteCorners,raySprite} from './core.js?v=accounts-1';
-import {drawEnemy,avatarColors,AVATAR_COUNT,CHARACTER_NAMES,CHARACTER_WIDTH,CHARACTER_HEIGHT} from './enemy-art.js?v=accounts-1';
-import {createMarks,clearMarks,surfaceHit,addMark,markCorners,drawMarkTexture} from './bullet-marks.js?v=accounts-1';
-import {WEAPONS,createArsenal,selectWeapon,startReload,stepWeapon,fireWeapon,drawPlayerWeapon,stepSelection,isGrenade,cleanLoadout,DEFAULT_LOADOUT,aimSpread,bloomSpread,aimZoom} from './weapons.js?v=accounts-1';
-import {readyEnemyShot,stepProjectile,ENEMY_GUNS,enemyVolley} from './combat.js?v=accounts-1';
-import {buildTrainingGround,drawDecal,drawTarget,TRAINING_TARGETS} from './training-ground.js?v=accounts-1';
-import {buildTown,TOWN_WORLD} from './town.js?v=accounts-1';
-import {buildWar,WAR_WORLD} from './war.js?v=accounts-1';
-import {drawWeaponIcon} from './weapon-icons.js?v=accounts-1';
-import {playerLevel,isUnlocked,unlockLevel} from './progression.js?v=accounts-1';
-import {blindOpacity,cloudPuffs,cloudRadius,cloudOpacity,GRENADE,throwPower} from './grenades.js?v=accounts-1';
-import {createSound} from './sound.js?v=accounts-1';
+import {makeCorpse,corpseCorners,corpseOpacity,CORPSE_LIFETIME,recoverHealth,damageOpacity} from './life-effects.js?v=season-1';
+import {createHitFeedback,recordHit,clearActorFeedback,drawHitFeedback} from './hit-feedback.js?v=season-1';
+import {WALK_FRAMES,walkFrame,updateWalk,turnActor,headingTo,showsBack} from './actor-motion.js?v=season-1';
+import {drawMinimap} from './minimap.js?v=season-1';
+import {world,setWorld,groundAt,ladders,nearestLadder,CAMP_WORLD,clamp,cover,walls,blocked,move,wallDistance,visible,flowField,nextStep,ENEMY_SIZE,spriteCorners,raySprite} from './core.js?v=season-1';
+import {drawEnemy,avatarColors,AVATAR_COUNT,CHARACTER_NAMES,CHARACTER_WIDTH,CHARACTER_HEIGHT} from './enemy-art.js?v=season-1';
+import {createMarks,clearMarks,surfaceHit,addMark,markCorners,drawMarkTexture} from './bullet-marks.js?v=season-1';
+import {WEAPONS,createArsenal,selectWeapon,startReload,stepWeapon,fireWeapon,drawPlayerWeapon,stepSelection,isGrenade,cleanLoadout,DEFAULT_LOADOUT,aimSpread,bloomSpread,aimZoom} from './weapons.js?v=season-1';
+import {readyEnemyShot,stepProjectile,ENEMY_GUNS,enemyVolley} from './combat.js?v=season-1';
+import {buildTrainingGround,drawDecal,drawTarget,TRAINING_TARGETS} from './training-ground.js?v=season-1';
+import {buildTown,TOWN_WORLD} from './town.js?v=season-1';
+import {buildWar,WAR_WORLD} from './war.js?v=season-1';
+import {drawWeaponIcon} from './weapon-icons.js?v=season-1';
+import {playerLevel,isUnlocked,unlockLevel,allowedLoadout,setProgress} from './progression.js?v=season-1';
+import {blindOpacity,cloudPuffs,cloudRadius,cloudOpacity,GRENADE,throwPower} from './grenades.js?v=season-1';
+import {createSound} from './sound.js?v=season-1';
 import {mouseDelta} from './mouse-look.js';
 import {createPointerLock} from './pointer-lock.js';
-import {createMatch,tickMatch,fireMatchWeapon,flagCounts,MODES,CAPTURE_SECONDS,FFA_COLORS,MATCH_RULES,TEAM_NAMES,TEAM_COLORS} from './team-match.js?v=accounts-1';
-import {INPUT_DT,moveFromInput} from './network-motion.js?v=accounts-1';
-import {NetworkGame} from './network-client.js?v=accounts-1';
-import {cancelQueue} from './player-hub.js?v=accounts-1';
+import {createMatch,tickMatch,fireMatchWeapon,flagCounts,MODES,CAPTURE_SECONDS,FFA_COLORS,MATCH_RULES,TEAM_NAMES,TEAM_COLORS} from './team-match.js?v=season-1';
+import {INPUT_DT,moveFromInput} from './network-motion.js?v=season-1';
+import {NetworkGame} from './network-client.js?v=season-1';
+import {cancelQueue,createPlayTicket} from './player-hub.js?v=season-1';
 const bootStage=async(progress,message)=>{window.dispatchEvent(new CustomEvent('dead-signal-boot',{detail:{progress,message}}));await new Promise(resolve=>setTimeout(resolve,0));};
 await bootStage(30,'Preparing the renderer…');
 const $=id=>document.getElementById(id),canvas=$('world'),gl=canvas.getContext('webgl',{antialias:true,alpha:false});
@@ -274,8 +274,9 @@ function tickTeams(dt){
 }
 function processMatchEvents(){
   for(const e of match.events){
-    if(e.type==='shot'){tracers.push({...e,life:.08});{const dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,dz=e.b.z-e.a.z,len=Math.hypot(dx,dy,dz);if(len>.05)addMark(marks,surfaceHit(e.a,{x:dx/len,y:dy/len,z:dz/len},len+.02),{size:.2});}if(e.shooter!==player.id||match.spectator)sfx.gun(e.weapon??0,{x:e.a.x,z:e.a.z,vol:.85});else if(network){recoil=1;fireSound();kickView();}}
+    if(e.type==='shot'||e.type==='bolt-launch'){if(e.type==='shot')tracers.push({...e,life:.08});if(e.type==='shot'){const dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,dz=e.b.z-e.a.z,len=Math.hypot(dx,dy,dz);if(len>.05)addMark(marks,surfaceHit(e.a,{x:dx/len,y:dy/len,z:dz/len},len+.02),{size:.2});}if(e.shooter!==player.id||match.spectator)sfx.gun(e.weapon??0,{x:e.a.x,z:e.a.z,vol:.85});else if(network){recoil=1;fireSound();kickView();}}
     if(e.type==='hit'&&(match.spectator||e.shooter===player.id)){recordHit(feedback,match.actors[e.victim],e.amount,elapsed,{shooter:e.shooter,position:e});if(!match.spectator){hit=.16;sfx.play('hitmark',{kill:match.actors[e.victim]?.hp<=0});}}
+    if(e.type==='bolt-impact'){const dx=e.b.x-e.a.x,dy=e.b.y-e.a.y,dz=e.b.z-e.a.z,len=Math.hypot(dx,dy,dz);if(len>.01)addMark(marks,surfaceHit(e.a,{x:dx/len,y:dy/len,z:dz/len},len+.03),{size:.12});}
     if(e.type==='throw'){if(e.shooter!==player.id||match.spectator)sfx.play('throw',{x:e.x,z:e.z,power:e.power,vol:.8});else if(network){recoil=1;fireSound(e.power);}}
     if(e.type==='bounce')sfx.play('bounce',{x:e.x,z:e.z,force:e.force});
     if(e.type==='explode'){blasts.push({kind:e.kind,x:e.x,y:Math.max(e.y,.6),z:e.z,age:0});sfx.play(e.kind,{x:e.x,z:e.z});}
@@ -320,7 +321,7 @@ async function connectOnline(join,assignment=null){
     if(!assignment)await cancelQueue();
     const address=$('server-address').value.trim();
     const fallbackAddress=address===connectionConfig?.server&&Date.now()<Date.parse(connectionConfig?.fallbackExpiresAt)?connectionConfig.fallbackServer:null;
-    const game=await NetworkGame.connect({address,fallbackAddress,ticket:assignment?.ticket,name:$('player-name').value,mode:join?undefined:$('room-mode').value,map:join?undefined:$('room-map').value,avatar:selectedAvatar,loadout,code,team:$('join-team').value==='auto'?null:Number($('join-team').value),
+    const game=await NetworkGame.connect({address,fallbackAddress,ticket:assignment?.ticket||await createPlayTicket(),name:$('player-name').value,mode:join?undefined:$('room-mode').value,map:join?undefined:$('room-map').value,avatar:selectedAvatar,loadout,code,team:$('join-team').value==='auto'?null:Number($('join-team').value),
       onSnapshot:data=>{if(network&&attempt===networkAttempt)receiveOnline(data);},
       onDisconnect:()=>{if(network&&attempt===networkAttempt){leaveOnline();openOnline();$('online-message').textContent='Connection lost or lobby timed out. Queue again, or rejoin your private room.';}}});
     if(attempt!==networkAttempt){game.leave();return;}
@@ -335,6 +336,8 @@ async function connectOnline(join,assignment=null){
 }
 addEventListener('dead-signal-match',event=>{connectOnline(true,event.detail);});
 function receiveOnline(data){
+  if(data.progress){setProgress(data.progress);window.dispatchEvent(new CustomEvent('dead-signal-progress',{detail:data.progress}));}
+  if(data.loadout){loadout=[...data.loadout];if(!loadout.includes(networkWeapon))networkWeapon=loadout[0];}
   if(world.id!==data.mapId)applyMap(data.mapId);
   if(mode==='ended'&&match?.network&&data.ended)return;
   updateOnlineSetup(data);
@@ -374,7 +377,7 @@ function receiveOnline(data){
     return teleported?{...a}:{...a,x:old.x,z:old.z,yaw:old.yaw,heading:old.heading};
   });
   remoteTargets=data.actors;
-  Object.assign(match,{mode:data.mode,zones:data.zones,held:data.held,timeLimit:data.timeLimit,scores:data.scores,elapsed:data.elapsed,corpses:data.corpses,feed:data.feed,ended:data.ended,winner:data.winner});
+  Object.assign(match,{bolts:data.bolts||[],grenades:data.grenades||[],clouds:data.clouds||[],mode:data.mode,zones:data.zones,held:data.held,timeLimit:data.timeLimit,scores:data.scores,elapsed:data.elapsed,corpses:data.corpses,feed:data.feed,ended:data.ended,winner:data.winner});
   match.events.push(...data.events);elapsed=data.elapsed;arsenal=player.arsenal;health=player.hp;recovering=player.recovering;
   enemies=match.actors.filter(a=>a.id!==player.id&&a.hp>0);
   processMatchEvents();updateHud();
@@ -567,7 +570,8 @@ function render(time){
   }
   for(const b of projectiles)drawDecalPlane({x:b.x,y:b.y-.1,z:b.z,w:.2,h:.2,yaw:camera.yaw},projectileTexture);
   for(const m of meds)drawSprite(m,medTexture,camera,1.1,.1+Math.sin(now*3)*.1);
-  if(tracers.length){const data=[];for(const t of tracers)for(const p of [t.a,t.b])data.push(p.x,p.y,p.z,1,.83,.42,0,0);gl.uniform1f(loc.uSprite,0);gl.uniform1f(loc.uFlash,0);bind(spriteBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.drawArrays(gl.LINES,0,data.length/8);}
+  const visibleTraces=[...tracers,...(match?.bolts||[]).map(b=>({a:{x:b.x,y:b.y,z:b.z},b:{x:b.x-b.vx*.018,y:b.y-b.vy*.018,z:b.z-b.vz*.018}}))];
+  if(visibleTraces.length){const data=[];for(const t of visibleTraces)for(const p of [t.a,t.b])data.push(p.x,p.y,p.z,1,.83,.42,0,0);gl.uniform1f(loc.uSprite,0);gl.uniform1f(loc.uFlash,0);bind(spriteBuffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.DYNAMIC_DRAW);gl.drawArrays(gl.LINES,0,data.length/8);}
   if(mode!=='menu'&&mode!=='tour'){drawCorpses(camera);drawEffects(camera,dt);}updateFlash();drawWeapon();if(mode==='playing'||mode==='spectating')drawHitFeedback(wc,feedback,elapsed,viewProjection,camera,width,height);updateKillFeed();if(mode==='playing'||mode==='tour'||mode==='spectating'||mode==='paused'||mode==='locking')drawMap(camera,actors);$('damage').style.opacity=(mode==='menu'||mode==='tour'||mode==='spectating'||match?.spectator)?0:damageOpacity(health,hurt);$('hitmarker').style.opacity=hit>0?1:0;
 requestAnimationFrame(render);
 }
@@ -590,15 +594,17 @@ const statBar=(label,v)=>`<span class="stat"><em>${label}</em><u><i style="width
 const GRENADE_STATS={6:[['DAMAGE',1],['RADIUS',1]],7:[['BLIND',1],['RADIUS',1]],8:[['COVER',1],['DURATION',.75]]};
 const SLOT_ROLES=['PRIMARY','SECONDARY','GRENADE','GRENADE'];
 function buildLoadout(){
+  loadout=allowedLoadout(loadout,playerLevel());
+  let initializingKit=true;
   const draft={guns:loadout.slice(0,2),nades:loadout.slice(2)};
   $('rank-value').textContent=playerLevel();
   const card=i=>{
     const w=WEAPONS[i],b=document.createElement('button'),locked=!isUnlocked(w);b.dataset.w=i;b.type='button';b.disabled=locked;b.classList.toggle('locked',locked);
     const stats=w.type==='grenade'?GRENADE_STATS[i].map(([l,v])=>statBar(l,v)).join(''):statBar('DAMAGE',w.damage*w.pellets/90)+statBar('RATE',1/(w.interval*7))+statBar('RANGE',w.range/80)+statBar('RECOIL',w.recoil.up/.12);
-    b.innerHTML=`<span class="card-art"><canvas width="440" height="168"></canvas></span><strong>${w.name}</strong><small>${w.style}</small>${stats}${locked?`<em class="lock">LOCKED · RANK ${unlockLevel(w)}</em>`:''}`;
+    b.innerHTML=`<span class="card-art"><canvas width="440" height="168"></canvas></span><strong>${w.name}</strong><small>${w.style}</small>${stats}${locked?`<em class="lock">LOCKED · LEVEL ${unlockLevel(w)}</em>`:''}`;
     drawWeaponIcon(b.querySelector('canvas').getContext('2d'),i);return b;
   };
-  $('gun-grid').replaceChildren(...[0,1,2,3,4,5].map(card));$('grenade-grid').replaceChildren(...[6,7,8].map(card));
+  $('gun-grid').replaceChildren(...WEAPONS.map((_,i)=>i).filter(i=>!isGrenade(i)).sort((a,b)=>unlockLevel(WEAPONS[a])-unlockLevel(WEAPONS[b])||a-b).map(card));$('grenade-grid').replaceChildren(...[6,7,8].map(card));
   // The kit strip shows the four slots with their weapon art; clicking a filled slot removes it.
   const slots=[0,1,2,3].map(n=>{const b=document.createElement('button');b.type='button';b.className='kit-slot';b.innerHTML=`<span class="slot-no">${n+1}</span><canvas width="300" height="152"></canvas><strong></strong><small>${SLOT_ROLES[n]}</small>`;return b;});
   $('kit').replaceChildren(...slots);
@@ -608,13 +614,13 @@ function buildLoadout(){
     slots.forEach((b,n)=>{const i=items[n],cv=b.querySelector('canvas');b.classList.toggle('empty',i===undefined);b.querySelector('strong').textContent=i===undefined?'EMPTY':WEAPONS[i].short;b.dataset.item=i??'';if(i!==undefined)drawWeaponIcon(cv.getContext('2d'),i);else cv.getContext('2d').clearRect(0,0,cv.width,cv.height);});
     const ok=draft.guns.length===2&&draft.nades.length===2;
     $('gun-count').textContent=`${draft.guns.length} / 2`;$('grenade-count').textContent=`${draft.nades.length} / 2`;$('loadout-done').disabled=!ok;
-    if(ok){loadout=[...draft.guns,...draft.nades];try{localStorage.setItem('dead-signal-loadout',JSON.stringify(loadout));}catch{}}
+    if(ok){loadout=[...draft.guns,...draft.nades];try{if(!initializingKit)localStorage.setItem('dead-signal-loadout',JSON.stringify(loadout));}catch{}}
     $('loadout-summary').textContent=loadout.map(i=>WEAPONS[i].short).join(' · ');
   };
-  const toggle=i=>{const list=isGrenade(i)?draft.nades:draft.guns;if(list.includes(i))list.splice(list.indexOf(i),1);else{if(list.length>=2)list.shift();list.push(i);}sync();};
+  const toggle=i=>{if(!isUnlocked(WEAPONS[i]))return;const list=isGrenade(i)?draft.nades:draft.guns;if(list.includes(i))list.splice(list.indexOf(i),1);else{if(list.length>=2)list.shift();list.push(i);}sync();};
   document.querySelectorAll('#gun-grid [data-w],#grenade-grid [data-w]').forEach(b=>b.onclick=()=>toggle(Number(b.dataset.w)));
   slots.forEach(b=>b.onclick=()=>{if(b.dataset.item!=='')toggle(Number(b.dataset.item));});
-  $('loadout').onclick=()=>{draft.guns=loadout.slice(0,2);draft.nades=loadout.slice(2);$('rank-value').textContent=playerLevel();sync();$('loadout-panel').hidden=false;};
+  $('loadout').onclick=()=>{loadout=allowedLoadout(loadout,playerLevel());draft.guns=loadout.slice(0,2);draft.nades=loadout.slice(2);$('rank-value').textContent=playerLevel();sync();$('loadout-panel').hidden=false;};
   const close=()=>{
     $('loadout-panel').hidden=true;
     if(network){network.setLoadout(loadout);if(!loadout.includes(networkWeapon))networkWeapon=loadout[0];}
@@ -623,9 +629,12 @@ function buildLoadout(){
   };
   $('loadout-done').onclick=close;$('loadout-back').onclick=close;
   $('pause-loadout').onclick=()=>$('loadout').click();
-  sync();
+  sync();initializingKit=false;
 }
 buildLoadout();
+let progressionStamp='';
+addEventListener('dead-signal-progress',event=>{setProgress(event.detail);const p=event.detail,stamp=(p?.season||'guest')+':'+playerLevel();$('loadout-season').textContent=p?`SEASON ${p.season} · LEVEL ${p.level} · ${p.xp} XP · ${p.xpToNext} XP TO LEVEL ${p.level+1} · Resets on the first, 00:00 UTC`:'LEVEL 1 · Log in and play server matches to earn XP and unlock weapons. Monthly seasons reset on the first.';if(stamp!==progressionStamp){const previous=Number(progressionStamp.split(':').at(-1))||1;if(p&&p.level>previous){const unlocked=WEAPONS.filter(w=>unlockLevel(w)>previous&&unlockLevel(w)<=p.level).map(w=>w.short);notify('LEVEL '+p.level+(unlocked.length?' · UNLOCKED '+unlocked.join(' / '):''),3);}progressionStamp=stamp;try{loadout=allowedLoadout(JSON.parse(localStorage.getItem('dead-signal-loadout')),playerLevel());}catch{}buildLoadout();}});
+$('loadout-season').textContent='LEVEL 1 · Log in and play server matches to earn XP. Monthly unlocks reset on the first.';
 const avatarButtons=[...document.querySelectorAll('[data-avatar]')];
 avatarButtons.forEach(b=>{const v=Number(b.dataset.avatar),c=b.querySelector('canvas');drawEnemy(c.getContext('2d'),0,v,false,selectedMode==='teams'?0:null);b.onclick=()=>{selectedAvatar=v;try{localStorage.setItem('dead-signal-avatar',v);}catch{}syncAvatar();};});
 function syncAvatar(){avatarButtons.forEach(b=>{const on=Number(b.dataset.avatar)===selectedAvatar;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',on);});$('avatar-name').textContent=CHARACTER_NAMES[selectedAvatar].toUpperCase();}
